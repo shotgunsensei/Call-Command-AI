@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "FeKY6AfgB2fvgBOL6ohk3"
+uri = "file://artifacts/callcommand/public/hero-dashboard.png"
+type = "image"
+title = "command center dashboard"
+
+[[generated]]
+id = "DeNMI7b2plkZxbO0M9tTb"
+uri = "file://artifacts/callcommand/public/audio-wave.png"
+type = "image"
+title = "audio transcription wave"

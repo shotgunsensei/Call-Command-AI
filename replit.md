@@ -25,3 +25,57 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Artifacts
+
+- **`artifacts/api-server`** — Express 5 API for CallCommand AI. Mounts the Clerk
+  proxy before body parsers, uses `clerkMiddleware` with
+  `publishableKeyFromHost`, and `requireAuth` middleware that auto-upserts
+  users via the Clerk SDK on first hit. Routes: `/api/healthz`, `/api/me`,
+  `/api/calls`, `/api/calls/:id`, `/api/calls/:id/process`,
+  `/api/calls/:id/webhook`, `/api/calls/:id/pdf`, `/api/action-items/:id`,
+  `/api/integrations`, `/api/integrations/:id`, `/api/integrations/:id/test`,
+  `/api/stats/dashboard`, `/api/billing/plan`, `/api/billing/checkout`, plus
+  storage routes from the object-storage skill.
+- **`artifacts/callcommand`** — React + Vite frontend (dark mode by default,
+  `<html class="dark">`). Wires `<ClerkProvider publishableKey={…}
+  proxyUrl={…} routing="path" appearance={…red theme}>`. Uses generated
+  `@workspace/api-client-react` hooks for every endpoint. Upload flow requests
+  presigned URL, PUTs file directly to GCS, then POSTs the object path to
+  `/api/calls`.
+
+## CallCommand AI
+
+Production app that turns phone-call recordings into structured intelligence.
+
+**Stack additions on top of the base:**
+- **Auth**: Clerk (Replit-managed) — proxy + `publishableKeyFromHost`.
+- **AI**: OpenAI via `AI_INTEGRATIONS_OPENAI_*` env (Replit AI Integrations).
+  Falls back to a fully-fleshed-out demo transcript + analysis when no key is
+  present or transcription is too short. Models: `gpt-4o-mini-transcribe` for
+  audio, `gpt-5.4` for analysis (JSON mode).
+- **Object storage**: audio files uploaded directly to GCS via presigned URL,
+  path stored on `call_records.fileUrl`.
+- **PDF**: `pdfkit` red-accent report generated on demand at
+  `/api/calls/:id/pdf`. **Note**: `@swc/helpers` is a runtime dep of
+  `api-server` because `pdfkit → fontkit → brotli` requires it at runtime
+  and `@swc/*` is externalized in the esbuild bundle.
+- **Plans**: `lib/plans.ts` defines free (10), pro (100/$29), business
+  (500/$79), msp (2000/$199). Monthly limits are enforced on
+  `POST /api/calls`.
+- **Stripe**: placeholder — `/api/billing/checkout` returns
+  `{configured:false}` when `STRIPE_SECRET_KEY` is missing.
+
+## Database Schema
+
+- `users` — Clerk userId (varchar primary key), email, name, avatarUrl, plan,
+  optional `stripeCustomerId`/`stripeSubscriptionId`.
+- `call_records` — userId, originalFilename, fileUrl, transcriptText,
+  summary, customer/company/phone, callType, intent, priority, sentiment,
+  status (`processing`/`ready`/`error`), durationSeconds, jsonb keyPoints,
+  followUpMessage, internalNotes, jsonb crmJson, jsonb suggestedTags,
+  `isDemo` (text "true"/"false"), errorMessage.
+- `action_items` — callRecordId, title, description, dueDate, priority,
+  status (`open`/`in_progress`/`done`).
+- `integrations` — userId, type (`crm`/`zapier`/`make`/`webhook`/`slack`),
+  name, webhookUrl, enabled.

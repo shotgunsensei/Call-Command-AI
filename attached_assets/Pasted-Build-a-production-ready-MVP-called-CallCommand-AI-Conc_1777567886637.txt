@@ -1,0 +1,325 @@
+Build a production-ready MVP called CallCommand AI.
+
+Concept:
+CallCommand AI is a mobile-first SaaS web app that turns phone call recordings into structured business intelligence: transcripts, summaries, action items, sentiment, priority, tags, follow-up tasks, and exportable records.
+
+Brand direction:
+Professional, dark-mode-first, cyber-technical, clean SaaS interface. Use the Shotgun Ninjas Productions style subtly: red accents, black/charcoal background, sharp card UI, modern command-center feel. Do not make it cartoonish.
+
+Core stack:
+- React + TypeScript frontend
+- Node.js/Express backend OR FastAPI if easier
+- PostgreSQL database
+- Drizzle or Prisma ORM
+- Stripe-ready subscription billing
+- OpenAI-compatible AI integration
+- File upload support for MP3, WAV, M4A, MP4
+- Mobile-first responsive layout
+
+Primary user flow:
+1. User signs up / logs in.
+2. User uploads a call recording.
+3. App transcribes the audio.
+4. App analyzes the transcript.
+5. App returns a structured call intelligence report.
+6. User can save, search, export, and send the report.
+
+Pages required:
+- Landing page
+- Pricing page
+- Login / signup
+- Dashboard
+- Upload call page
+- Call report detail page
+- Call history page
+- Settings page
+- Billing page
+- Webhook integrations page
+
+Landing page copy:
+Headline:
+“Turn every call into structured business intelligence.”
+
+Subheadline:
+“CallCommand AI records the important parts: summaries, action items, follow-ups, customer intent, priority, and CRM-ready notes.”
+
+CTA buttons:
+- Start Free
+- View Demo
+
+Primary sections:
+- Upload a call
+- Get instant transcript
+- Extract action items
+- Push notes to your workflow
+- Built for MSPs, sales teams, field service, repair shops, and solo operators
+
+Pricing:
+Free:
+- 10 calls/month
+- Basic transcript
+- Basic summary
+- Manual export
+
+Pro - $29/month:
+- 100 calls/month
+- AI action extraction
+- Sentiment + priority
+- PDF export
+- Email export
+- Saved call history
+
+Business - $79/month:
+- 500 calls/month
+- Team users
+- Webhooks
+- Slack integration
+- CRM/PSA-ready structured JSON
+- Priority processing
+
+MSP/Agency - $199/month:
+- 2,000 calls/month
+- Multi-client workspace
+- Custom tagging rules
+- Kaseya BMS / PSA export placeholder
+- White-label report branding
+
+Database models:
+User:
+- id
+- name
+- email
+- password_hash or auth provider id
+- role
+- plan
+- stripe_customer_id
+- stripe_subscription_id
+- created_at
+
+Workspace:
+- id
+- name
+- owner_user_id
+- plan
+- created_at
+
+CallRecord:
+- id
+- workspace_id
+- user_id
+- original_filename
+- file_url
+- transcript_text
+- summary
+- customer_name
+- company_name
+- caller_phone
+- call_type
+- intent
+- priority
+- sentiment
+- status
+- duration_seconds
+- created_at
+
+ActionItem:
+- id
+- call_record_id
+- title
+- description
+- due_date
+- priority
+- status
+
+Tag:
+- id
+- workspace_id
+- name
+
+CallTag:
+- call_record_id
+- tag_id
+
+Integration:
+- id
+- workspace_id
+- type
+- name
+- webhook_url
+- enabled
+- created_at
+
+AI output format:
+The AI analysis must always return structured JSON:
+
+{
+  "summary": "",
+  "customer_name": "",
+  "company_name": "",
+  "caller_phone": "",
+  "call_type": "support | sales | billing | scheduling | internal | other",
+  "intent": "",
+  "priority": "low | medium | high | urgent",
+  "sentiment": "positive | neutral | frustrated | angry | confused",
+  "status": "new | needs_follow_up | resolved | waiting_on_customer | escalated",
+  "key_points": [],
+  "action_items": [
+    {
+      "title": "",
+      "description": "",
+      "priority": "low | medium | high | urgent",
+      "due_date": null
+    }
+  ],
+  "suggested_tags": [],
+  "follow_up_message": "",
+  "internal_notes": "",
+  "crm_json": {}
+}
+
+Upload page requirements:
+- Drag-and-drop audio upload
+- File validation
+- Progress indicator
+- Processing state
+- Error handling
+- Demo mode with sample transcript if API keys are missing
+
+Dashboard requirements:
+Show:
+- Total calls processed
+- Calls this month
+- Open action items
+- High priority calls
+- Recent calls
+- Sentiment breakdown
+- Top tags
+
+Call report page:
+Show:
+- Call summary card
+- Priority badge
+- Sentiment badge
+- Transcript section
+- Key points
+- Action items with checkboxes
+- Suggested follow-up message
+- Internal notes
+- CRM-ready JSON view
+- Export buttons:
+  - Copy summary
+  - Copy JSON
+  - Download PDF
+  - Send webhook
+
+Webhook integration:
+Allow user to create webhook destinations.
+When a call is processed, send JSON payload to enabled webhook URLs.
+Include a manual “Test Webhook” button.
+
+Slack integration placeholder:
+Create UI for Slack webhook URL.
+Send formatted call summary to Slack if configured.
+
+Kaseya BMS / PSA placeholder:
+Create a “PSA Export” section.
+Do not claim real Kaseya API completion unless implemented.
+Allow manual copy/export of structured ticket JSON.
+
+Ticket JSON format:
+{
+  "title": "",
+  "description": "",
+  "priority": "",
+  "customer": "",
+  "contact": "",
+  "category": "",
+  "notes": "",
+  "source": "CallCommand AI"
+}
+
+Security:
+- Protect authenticated routes
+- Never expose API keys client-side
+- Validate uploaded files
+- Limit file size
+- Sanitize text output
+- Use environment variables
+- Add .env.example
+
+Environment variables:
+DATABASE_URL=
+OPENAI_API_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+VITE_STRIPE_PUBLIC_KEY=
+APP_BASE_URL=
+SESSION_SECRET=
+
+Stripe:
+Implement pricing page and billing page.
+Use Stripe checkout session placeholders if live keys are missing.
+Create plan logic in code so subscriptions can map to limits.
+Do not block app testing if Stripe keys are missing.
+
+Transcription:
+Implement transcription using an OpenAI-compatible audio transcription endpoint if OPENAI_API_KEY exists.
+If no API key exists, use demo transcript mode and clearly label it as demo data.
+Keep transcription service modular so Deepgram or Whisper can be added later.
+
+AI analysis:
+Create a server-side AI service that accepts transcript text and returns structured JSON.
+Use strict JSON parsing with fallback repair.
+If API key is missing, return realistic demo analysis.
+
+PDF export:
+Generate clean PDF report with:
+- Call title
+- Summary
+- Priority
+- Sentiment
+- Key points
+- Action items
+- Follow-up message
+- Internal notes
+- Timestamp
+
+UI components:
+- Sidebar navigation
+- Top bar
+- Cards
+- Badges
+- Tables
+- Upload dropzone
+- Modal dialogs
+- Toast notifications
+- Loading states
+- Empty states
+
+Design language:
+- Dark background
+- Red primary accent
+- Slate/charcoal cards
+- Clean white text
+- Subtle glow effects
+- Command-center dashboard style
+- Mobile-first layout
+
+Important:
+Build the app completely enough that I can run it, test uploads, view reports, and understand where to add real API keys.
+No fake broken buttons.
+If a feature depends on missing API credentials, provide a working demo fallback.
+Add clear comments in the code.
+Include README.md with:
+- setup steps
+- env variable instructions
+- how to run locally
+- how to deploy
+- how to configure Stripe
+- how to configure OpenAI
+- next development steps
+
+Final output:
+After building, run the app and fix all errors.
+Make sure npm install, npm run dev, and database migrations work.
+Make sure the UI is polished and usable on desktop and mobile.

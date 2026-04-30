@@ -3,20 +3,31 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: CallCommand AI API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: calls
+    description: Call records
+  - name: actionItems
+    description: Action items
+  - name: integrations
+    description: Webhook integrations
+  - name: storage
+    description: Object storage
+  - name: stats
+    description: Dashboard stats
+  - name: billing
+    description: Billing & plans
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +35,566 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [health]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUploadUrlBody"
+      responses:
+        "200":
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestUploadUrlResponse"
+
+  /calls:
+    get:
+      operationId: listCalls
+      tags: [calls]
+      summary: List call records
+      parameters:
+        - in: query
+          name: q
+          required: false
+          schema: { type: string }
+        - in: query
+          name: status
+          required: false
+          schema: { type: string }
+        - in: query
+          name: priority
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallList"
+    post:
+      operationId: createCall
+      tags: [calls]
+      summary: Create a call record from an upload (kicks off processing)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCallBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+
+  /calls/{id}:
+    get:
+      operationId: getCall
+      tags: [calls]
+      summary: Get a single call record
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Call
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteCall
+      tags: [calls]
+      summary: Delete a call record
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /calls/{id}/process:
+    post:
+      operationId: processCall
+      tags: [calls]
+      summary: (Re)process the call - transcribe and analyze
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+
+  /calls/{id}/webhook:
+    post:
+      operationId: sendCallWebhook
+      tags: [calls]
+      summary: Send the call payload to a configured webhook
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendWebhookBody"
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResult"
+
+  /calls/{id}/pdf:
+    get:
+      operationId: getCallPdf
+      tags: [calls]
+      summary: Download a PDF report of the call
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: PDF stream
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /action-items/{id}:
+    patch:
+      operationId: updateActionItem
+      tags: [actionItems]
+      summary: Update an action item (toggle status / change due date)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateActionItemBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionItem"
+
+  /integrations:
+    get:
+      operationId: listIntegrations
+      tags: [integrations]
+      summary: List configured webhook integrations
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationList"
+    post:
+      operationId: createIntegration
+      tags: [integrations]
+      summary: Create a new webhook integration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIntegrationBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+
+  /integrations/{id}:
+    patch:
+      operationId: updateIntegration
+      tags: [integrations]
+      summary: Update an integration
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIntegrationBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+    delete:
+      operationId: deleteIntegration
+      tags: [integrations]
+      summary: Delete an integration
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /integrations/{id}/test:
+    post:
+      operationId: testIntegration
+      tags: [integrations]
+      summary: Send a test payload to a webhook
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResult"
+
+  /stats/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [stats]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /billing/checkout:
+    post:
+      operationId: createCheckoutSession
+      tags: [billing]
+      summary: Create a Stripe checkout session (placeholder if Stripe not configured)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckoutBody"
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSession"
+
+  /billing/plan:
+    get:
+      operationId: getBillingPlan
+      tags: [billing]
+      summary: Get current plan details
+      responses:
+        "200":
+          description: Plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingPlan"
+
 components:
   schemas:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
+      required: [status]
 
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+
+    Me:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: ["string", "null"] }
+        avatarUrl: { type: ["string", "null"] }
+        plan: { type: string }
+        callsThisMonth: { type: integer }
+        monthlyLimit: { type: integer }
+        demoMode: { type: boolean }
+      required:
+        [id, email, plan, callsThisMonth, monthlyLimit, demoMode]
+
+    RequestUploadUrlBody:
+      type: object
+      properties:
+        name: { type: string }
+        size: { type: integer }
+        contentType: { type: string }
+      required: [name, size, contentType]
+
+    RequestUploadUrlResponse:
+      type: object
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
+      required: [uploadURL, objectPath]
+
+    CreateCallBody:
+      type: object
+      properties:
+        objectPath: { type: string }
+        originalFilename: { type: string }
+      required: [objectPath, originalFilename]
+
+    ActionItem:
+      type: object
+      properties:
+        id: { type: string }
+        callRecordId: { type: string }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        dueDate: { type: ["string", "null"], format: date-time }
+        priority: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        [id, callRecordId, title, priority, status, createdAt, updatedAt]
+
+    UpdateActionItemBody:
+      type: object
+      properties:
+        status: { type: string }
+        priority: { type: string }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        dueDate: { type: ["string", "null"], format: date-time }
+
+    Call:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        originalFilename: { type: string }
+        fileUrl: { type: ["string", "null"] }
+        transcriptText: { type: ["string", "null"] }
+        summary: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        callerPhone: { type: ["string", "null"] }
+        callType: { type: ["string", "null"] }
+        intent: { type: ["string", "null"] }
+        priority: { type: ["string", "null"] }
+        sentiment: { type: ["string", "null"] }
+        status: { type: string }
+        durationSeconds: { type: ["integer", "null"] }
+        keyPoints:
+          type: array
+          items: { type: string }
+        followUpMessage: { type: ["string", "null"] }
+        internalNotes: { type: ["string", "null"] }
+        crmJson: { type: ["object", "null"] }
+        suggestedTags:
+          type: array
+          items: { type: string }
+        isDemo: { type: string }
+        errorMessage: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        actionItems:
+          type: array
+          items: { $ref: "#/components/schemas/ActionItem" }
+      required:
+        [
+          id,
+          userId,
+          originalFilename,
+          status,
+          keyPoints,
+          suggestedTags,
+          isDemo,
+          createdAt,
+          updatedAt,
+          actionItems,
+        ]
+
+    CallList:
+      type: array
+      items: { $ref: "#/components/schemas/Call" }
+
+    SendWebhookBody:
+      type: object
+      properties:
+        integrationId: { type: string }
+      required: [integrationId]
+
+    WebhookResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        status: { type: ["integer", "null"] }
+        message: { type: ["string", "null"] }
+      required: [ok]
+
+    Integration:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        type: { type: string }
+        name: { type: string }
+        webhookUrl: { type: string }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        [id, userId, type, name, webhookUrl, enabled, createdAt, updatedAt]
+
+    IntegrationList:
+      type: array
+      items: { $ref: "#/components/schemas/Integration" }
+
+    CreateIntegrationBody:
+      type: object
+      properties:
+        type: { type: string }
+        name: { type: string }
+        webhookUrl: { type: string }
+        enabled: { type: boolean }
+      required: [type, name, webhookUrl]
+
+    UpdateIntegrationBody:
+      type: object
+      properties:
+        name: { type: string }
+        webhookUrl: { type: string }
+        enabled: { type: boolean }
+
+    SentimentBucket:
+      type: object
+      properties:
+        sentiment: { type: string }
+        count: { type: integer }
+      required: [sentiment, count]
+
+    TagCount:
+      type: object
+      properties:
+        tag: { type: string }
+        count: { type: integer }
+      required: [tag, count]
+
+    DashboardStats:
+      type: object
+      properties:
+        totalCalls: { type: integer }
+        callsThisMonth: { type: integer }
+        openActionItems: { type: integer }
+        highPriorityCalls: { type: integer }
+        recentCalls:
+          type: array
+          items: { $ref: "#/components/schemas/Call" }
+        sentimentBreakdown:
+          type: array
+          items: { $ref: "#/components/schemas/SentimentBucket" }
+        topTags:
+          type: array
+          items: { $ref: "#/components/schemas/TagCount" }
+      required:
+        [
+          totalCalls,
+          callsThisMonth,
+          openActionItems,
+          highPriorityCalls,
+          recentCalls,
+          sentimentBreakdown,
+          topTags,
+        ]
+
+    CreateCheckoutBody:
+      type: object
+      properties:
+        plan: { type: string }
+      required: [plan]
+
+    CheckoutSession:
+      type: object
+      properties:
+        url: { type: ["string", "null"] }
+        configured: { type: boolean }
+        message: { type: ["string", "null"] }
+      required: [configured]
+
+    BillingPlan:
+      type: object
+      properties:
+        plan: { type: string }
+        callsThisMonth: { type: integer }
+        monthlyLimit: { type: integer }
+        stripeConfigured: { type: boolean }
+      required: [plan, callsThisMonth, monthlyLimit, stripeConfigured]
