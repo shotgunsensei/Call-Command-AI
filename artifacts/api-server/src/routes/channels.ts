@@ -7,6 +7,7 @@ import {
 import { db, channelsTable, type Channel } from "@workspace/db";
 import { and, asc, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { normalizeE164 } from "../lib/phoneNumbers";
 
 const router: IRouter = Router();
 
@@ -47,6 +48,11 @@ export async function ensureDefaultChannel(userId: string): Promise<Channel> {
 /**
  * Pick the channel to attach an inbound call to. Looks up by phone first
  * (e.g. Twilio "To"), falls back to the seeded default channel.
+ *
+ * Phone lookup is E.164-normalized on both sides so we tolerate inputs
+ * formatted as `(415) 555-0142`, `415-555-0142`, `+14155550142`, etc.
+ * Channel rows store the value as-typed; we normalize at compare time so
+ * legacy rows still match.
  */
 export async function resolveChannelForIngestion(args: {
   userId: string;
@@ -66,20 +72,37 @@ export async function resolveChannelForIngestion(args: {
       .limit(1);
     if (c) return c;
   }
-  if (args.phoneNumber) {
-    const [c] = await db
+  const wantedE164 = normalizeE164(args.phoneNumber);
+  if (wantedE164) {
+    // Pull the user's channels and compare normalized values in JS. This
+    // keeps the SQL portable (no UDF for normalization) and handles the
+    // small-N case here efficiently.
+    const all = await db
       .select()
       .from(channelsTable)
-      .where(
-        and(
-          eq(channelsTable.userId, args.userId),
-          eq(channelsTable.phoneNumber, args.phoneNumber),
-        ),
-      )
-      .limit(1);
-    if (c) return c;
+      .where(eq(channelsTable.userId, args.userId));
+    const match = all.find((c) => normalizeE164(c.phoneNumber) === wantedE164);
+    if (match) return match;
   }
   return ensureDefaultChannel(args.userId);
+}
+
+/**
+ * Strict variant for Twilio incoming. Returns null if no channel matches
+ * and no default exists yet — Twilio handler then plays a safe TwiML
+ * message rather than auto-seeding a default for a stranger.
+ */
+export async function findChannelByLine(args: {
+  userId: string;
+  phoneNumber: string | null;
+}): Promise<Channel | null> {
+  const wantedE164 = normalizeE164(args.phoneNumber);
+  if (!wantedE164) return null;
+  const all = await db
+    .select()
+    .from(channelsTable)
+    .where(eq(channelsTable.userId, args.userId));
+  return all.find((c) => normalizeE164(c.phoneNumber) === wantedE164) ?? null;
 }
 
 router.get(
@@ -115,11 +138,50 @@ router.post(
         name: name.slice(0, 200),
         type: typeof body.type === "string" ? body.type : "webhook",
         phoneNumber:
-          typeof body.phoneNumber === "string" ? body.phoneNumber : null,
+          typeof body.phoneNumber === "string"
+            ? normalizeE164(body.phoneNumber) ?? body.phoneNumber
+            : null,
         defaultRoute:
           typeof body.defaultRoute === "string" ? body.defaultRoute : null,
         isActive: body.isActive === false ? false : true,
         isDefault: false,
+        greetingText:
+          typeof body.greetingText === "string" ? body.greetingText : null,
+        recordCalls:
+          typeof body.recordCalls === "boolean" ? body.recordCalls : true,
+        allowVoicemail:
+          typeof body.allowVoicemail === "boolean" ? body.allowVoicemail : true,
+        businessHours:
+          body.businessHours && typeof body.businessHours === "object"
+            ? (body.businessHours as Record<string, unknown>)
+            : null,
+        afterHoursBehavior:
+          typeof body.afterHoursBehavior === "string" &&
+          ["voicemail", "forward", "ai_intake_placeholder", "hangup"].includes(
+            body.afterHoursBehavior,
+          )
+            ? (body.afterHoursBehavior as
+                | "voicemail"
+                | "forward"
+                | "ai_intake_placeholder"
+                | "hangup")
+            : "voicemail",
+        forwardNumber:
+          typeof body.forwardNumber === "string"
+            ? normalizeE164(body.forwardNumber) ?? body.forwardNumber
+            : null,
+        maxCallDurationSeconds:
+          typeof body.maxCallDurationSeconds === "number"
+            ? body.maxCallDurationSeconds
+            : null,
+        recordingConsentText:
+          typeof body.recordingConsentText === "string"
+            ? body.recordingConsentText
+            : null,
+        assignedFlowId:
+          typeof body.assignedFlowId === "string" ? body.assignedFlowId : null,
+        productMode:
+          typeof body.productMode === "string" ? body.productMode : null,
       })
       .returning();
     res.status(201).json(serialize(created!));
@@ -136,13 +198,63 @@ router.patch(
     const patch: Partial<Channel> = {};
     if (typeof body.name === "string") patch.name = body.name.slice(0, 200);
     if (typeof body.type === "string") patch.type = body.type;
-    if ("phoneNumber" in body)
+    if ("phoneNumber" in body) {
       patch.phoneNumber =
-        typeof body.phoneNumber === "string" ? body.phoneNumber : null;
+        typeof body.phoneNumber === "string"
+          ? normalizeE164(body.phoneNumber) ?? body.phoneNumber
+          : null;
+    }
     if ("defaultRoute" in body)
       patch.defaultRoute =
         typeof body.defaultRoute === "string" ? body.defaultRoute : null;
     if (typeof body.isActive === "boolean") patch.isActive = body.isActive;
+    if ("greetingText" in body)
+      patch.greetingText =
+        typeof body.greetingText === "string" ? body.greetingText : null;
+    if (typeof body.recordCalls === "boolean")
+      patch.recordCalls = body.recordCalls;
+    if (typeof body.allowVoicemail === "boolean")
+      patch.allowVoicemail = body.allowVoicemail;
+    if ("businessHours" in body) {
+      patch.businessHours =
+        body.businessHours && typeof body.businessHours === "object"
+          ? (body.businessHours as Channel["businessHours"])
+          : null;
+    }
+    if (
+      typeof body.afterHoursBehavior === "string" &&
+      ["voicemail", "forward", "ai_intake_placeholder", "hangup"].includes(
+        body.afterHoursBehavior,
+      )
+    ) {
+      patch.afterHoursBehavior = body.afterHoursBehavior as
+        | "voicemail"
+        | "forward"
+        | "ai_intake_placeholder"
+        | "hangup";
+    }
+    if ("forwardNumber" in body)
+      patch.forwardNumber =
+        typeof body.forwardNumber === "string"
+          ? normalizeE164(body.forwardNumber) ?? body.forwardNumber
+          : null;
+    if ("maxCallDurationSeconds" in body)
+      patch.maxCallDurationSeconds =
+        typeof body.maxCallDurationSeconds === "number"
+          ? body.maxCallDurationSeconds
+          : null;
+    if ("recordingConsentText" in body)
+      patch.recordingConsentText =
+        typeof body.recordingConsentText === "string"
+          ? body.recordingConsentText
+          : null;
+    if ("assignedFlowId" in body)
+      patch.assignedFlowId =
+        typeof body.assignedFlowId === "string" ? body.assignedFlowId : null;
+    if ("productMode" in body)
+      patch.productMode =
+        typeof body.productMode === "string" ? body.productMode : null;
+
     const [updated] = await db
       .update(channelsTable)
       .set(patch)

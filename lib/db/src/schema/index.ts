@@ -13,3 +13,4 @@ export * from "./channels";
 export * from "./callFlows";
 export * from "./flowNodes";
 export * from "./flowLogs";
+export * from "./telephonyEvents";

@@ -18,7 +18,9 @@ import {
   ListTodo,
   Radio,
   GitBranch,
-  Sparkles
+  Sparkles,
+  Tv,
+  Wand2
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./ui/button";
@@ -37,9 +39,11 @@ import { useGetMe } from "@workspace/api-client-react";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Switchboard", href: "/switchboard", icon: Tv },
   { label: "Calls", href: "/calls", icon: Phone },
   { label: "New Call", href: "/calls/new", icon: UploadIcon },
   { label: "Channels", href: "/channels", icon: Radio },
+  { label: "Telephony Setup", href: "/setup/telephony", icon: Wand2 },
   { label: "Flows", href: "/flows", icon: GitBranch },
   { label: "Simulator", href: "/simulate", icon: Sparkles },
   { label: "Tickets", href: "/tickets", icon: TicketIcon },

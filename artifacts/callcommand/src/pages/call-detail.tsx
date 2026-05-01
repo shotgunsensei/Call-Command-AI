@@ -10,8 +10,11 @@ import {
   useSendFollowup,
   useRunRulesForCall,
   useGetFlowLogsForCall,
-  useListChannels
+  useListChannels,
+  useListTelephonyEvents,
+  useRetryCallProcessing
 } from "@workspace/api-client-react";
+import { statusBadgeClass, statusLabel, toDisplayStatus } from "@/lib/callStatus";
 import { useRoute, useLocation } from "wouter";
 import { 
   Card, 
@@ -65,7 +68,19 @@ export default function CallDetail() {
   const { data: integrations } = useListIntegrations();
   const { data: flowLogs } = useGetFlowLogsForCall(id);
   const { data: channels } = useListChannels();
-  
+  const { data: telephonyEvents } = useListTelephonyEvents(
+    { callId: id },
+    {
+      query: {
+        // Poll while the call is still moving through the pipeline so the
+        // operator sees Twilio status callbacks land in near-real-time.
+        queryKey: ["telephony-events", id],
+        refetchInterval: 5000,
+      },
+    },
+  );
+  const retryProcessing = useRetryCallProcessing();
+
   const processCall = useProcessCall();
   const updateActionItem = useUpdateActionItem();
   const sendWebhook = useSendCallWebhook();
@@ -86,7 +101,14 @@ export default function CallDetail() {
   const handleReprocess = async () => {
     try {
       setIsProcessing(true);
-      await processCall.mutateAsync({ id });
+      // For Twilio-sourced calls we route through retry-processing so the
+      // recording is re-downloaded with auth; everything else (uploaded
+      // audio, simulator) goes through the original processCall path.
+      if (call.provider === "twilio") {
+        await retryProcessing.mutateAsync({ id });
+      } else {
+        await processCall.mutateAsync({ id });
+      }
       toast({ title: "Analysis initiated", description: "Call is being reprocessed." });
       refetch();
     } catch (err: any) {
@@ -232,19 +254,57 @@ export default function CallDetail() {
         </div>
       </div>
 
-      {/* Status Banner */}
-      {call.status === "processing" && (
-        <div className="bg-blue-500/10 border border-blue-500/20 text-blue-500 p-4 rounded-lg flex items-center">
-          <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
-          <span>Analysis is currently processing. This may take a moment.</span>
-        </div>
-      )}
-      {call.status === "error" && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-lg flex items-center">
-          <AlertTriangle className="h-5 w-5 mr-3" />
-          <span>Analysis failed: {call.errorMessage || "Unknown error"}</span>
-        </div>
-      )}
+      {/* Status Banner — uses the shared mapper so Phase 2 telephony
+          statuses (recording_ready, transcribing, analyzing, flow_running,
+          completed, busy, no_answer, …) collapse into the right bucket. */}
+      {(() => {
+        const display = toDisplayStatus(call.status);
+        if (display === "pending") {
+          return (
+            <div
+              className="bg-blue-500/10 border border-blue-500/20 text-blue-400 p-4 rounded-lg flex items-center"
+              data-testid="status-banner-pending"
+            >
+              <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
+              <span>{statusLabel(call.status)} — refreshing automatically.</span>
+            </div>
+          );
+        }
+        if (display === "error") {
+          return (
+            <div
+              className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-lg flex items-center"
+              data-testid="status-banner-error"
+            >
+              <AlertTriangle className="h-5 w-5 mr-3" />
+              <span>
+                {statusLabel(call.status)}
+                {call.errorMessage ? `: ${call.errorMessage}` : ""}
+              </span>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* Status badge */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground">
+          Status
+        </span>
+        <Badge
+          variant="outline"
+          className={statusBadgeClass(call.status)}
+          data-testid="badge-call-status"
+        >
+          {statusLabel(call.status)}
+        </Badge>
+        {call.provider && (
+          <Badge variant="outline" className="text-xs">
+            via {call.provider}
+          </Badge>
+        )}
+      </div>
 
       {/* Meta Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -335,6 +395,52 @@ export default function CallDetail() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Telephony events timeline — populated by Twilio status,
+              recording, and transcription webhooks. Empty for non-telephony
+              calls (uploads, simulator). */}
+          {(telephonyEvents?.length ?? 0) > 0 && (
+            <Card className="bg-card" data-testid="card-telephony-events">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Radio className="h-5 w-5 mr-2 text-primary" />
+                  Telephony Events
+                </CardTitle>
+                <CardDescription>
+                  {telephonyEvents!.length} event(s) from{" "}
+                  {call.provider ?? "provider"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-2">
+                  {telephonyEvents!.map((ev, i) => (
+                    <li
+                      key={ev.id}
+                      className="border border-border/60 rounded-md bg-secondary/30 p-3 text-xs"
+                      data-testid={`telephony-event-${i}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">
+                          {ev.provider}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {ev.eventType}
+                        </Badge>
+                        <span className="ml-auto text-muted-foreground">
+                          {format(new Date(ev.createdAt), "PPpp")}
+                        </span>
+                      </div>
+                      {ev.message && (
+                        <div className="mt-1 text-muted-foreground">
+                          {ev.message}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="bg-card" data-testid="card-flow-trace">
             <CardHeader>

@@ -1,6 +1,8 @@
 import {
   boolean,
   index,
+  integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -9,6 +11,28 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+
+/**
+ * Free-form business hours JSON. We accept either a "always" sentinel or a
+ * day-keyed map of {start, end} 24h strings. The orchestrator side does the
+ * actual schedule check so this stays loose for forward-compat.
+ */
+export interface BusinessHours {
+  mode?: "always" | "weekly";
+  timezone?: string;
+  weekly?: Partial<
+    Record<
+      "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun",
+      { start: string; end: string } | null
+    >
+  >;
+}
+
+export type AfterHoursBehavior =
+  | "voicemail"
+  | "forward"
+  | "ai_intake_placeholder"
+  | "hangup";
 
 export const channelsTable = pgTable(
   "channels",
@@ -21,6 +45,20 @@ export const channelsTable = pgTable(
     defaultRoute: text("default_route"),
     isActive: boolean("is_active").notNull().default(true),
     isDefault: boolean("is_default").notNull().default(false),
+    // Phase 2 — channel-aware TwiML behavior
+    greetingText: text("greeting_text"),
+    recordCalls: boolean("record_calls").notNull().default(true),
+    allowVoicemail: boolean("allow_voicemail").notNull().default(true),
+    businessHours: jsonb("business_hours").$type<BusinessHours>(),
+    afterHoursBehavior: text("after_hours_behavior")
+      .$type<AfterHoursBehavior>()
+      .notNull()
+      .default("voicemail"),
+    forwardNumber: text("forward_number"),
+    maxCallDurationSeconds: integer("max_call_duration_seconds"),
+    recordingConsentText: text("recording_consent_text"),
+    assignedFlowId: uuid("assigned_flow_id"),
+    productMode: text("product_mode"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

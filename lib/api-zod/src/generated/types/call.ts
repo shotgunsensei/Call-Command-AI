@@ -50,6 +50,18 @@ export interface Call {
   channelId?: string | null;
   /** @nullable */
   assignedUserId?: string | null;
+  /** @nullable */
+  provider?: string | null;
+  /** @nullable */
+  providerCallSid?: string | null;
+  /** @nullable */
+  calledNumber?: string | null;
+  /** @nullable */
+  callDirection?: string | null;
+  /** @nullable */
+  recordingUrl?: string | null;
+  /** @nullable */
+  recordingDurationSeconds?: number | null;
   createdAt: Date;
   updatedAt: Date;
   actionItems: ActionItem[];

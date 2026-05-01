@@ -20,20 +20,12 @@ import {
 import { requireAuth } from "../middlewares/requireAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { claimUploadIntent } from "@workspace/db";
-import { processCallAudio, streamToBuffer } from "../services/aiAnalysis";
 import { streamCallPdf } from "../services/pdf";
 import { getPlanInfo } from "../lib/plans";
 import { safeFetchWebhook } from "../lib/safeWebhook";
-import {
-  ensureDefaultRules,
-  evaluateAndExecuteRules,
-  runRulesWithDefaults,
-} from "../services/rulesEngine";
-import {
-  executeFlowForCall,
-  resolveActiveFlowFor,
-} from "../services/flowEngine";
-import { Readable } from "stream";
+import { runRulesWithDefaults } from "../services/rulesEngine";
+import { runCallPipeline } from "../services/callPipeline";
+import { twilioProvider } from "../services/telephony/twilioProvider";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -112,110 +104,14 @@ async function runProcessing(
   objectPath: string | null,
   originalFilename: string,
 ): Promise<void> {
-  let audioBuffer: Buffer | null = null;
-  if (objectPath) {
-    try {
-      const file = await storage.getObjectEntityFile(objectPath);
-      const response = await storage.downloadObject(file);
-      if (response.body) {
-        const stream = Readable.fromWeb(
-          response.body as ReadableStream<Uint8Array>,
-        );
-        audioBuffer = await streamToBuffer(stream);
-      }
-    } catch {
-      audioBuffer = null;
-    }
-  }
-
-  const processed = await processCallAudio({
-    audioBuffer,
+  // Thin wrapper around the canonical pipeline so legacy upload routes
+  // still have a single function to call.
+  await runCallPipeline({
+    userId,
+    callId,
+    source: { objectPath },
     originalFilename,
   });
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(callRecordsTable)
-      .set({
-        transcriptText: processed.transcriptText,
-        summary: processed.analysis.summary,
-        customerName: processed.analysis.customerName,
-        companyName: processed.analysis.companyName,
-        callerPhone: processed.analysis.callerPhone,
-        callType: processed.analysis.callType,
-        intent: processed.analysis.intent,
-        priority: processed.analysis.priority,
-        sentiment: processed.analysis.sentiment,
-        durationSeconds: processed.durationSeconds,
-        keyPoints: processed.analysis.keyPoints,
-        followUpMessage: processed.analysis.followUpMessage,
-        internalNotes: processed.analysis.internalNotes,
-        crmJson: processed.analysis.crmJson,
-        suggestedTags: processed.analysis.suggestedTags,
-        isDemo: processed.isDemo ? "true" : "false",
-        status: "ready",
-        errorMessage: null,
-      })
-      .where(
-        and(
-          eq(callRecordsTable.id, callId),
-          eq(callRecordsTable.userId, userId),
-        ),
-      );
-
-    await tx
-      .delete(actionItemsTable)
-      .where(eq(actionItemsTable.callRecordId, callId));
-
-    if (processed.analysis.actionItems.length > 0) {
-      await tx.insert(actionItemsTable).values(
-        processed.analysis.actionItems.map((a) => ({
-          callRecordId: callId,
-          title: a.title,
-          description: a.description ?? null,
-          priority: a.priority,
-          dueDate: a.dueDate ? new Date(a.dueDate) : null,
-        })),
-      );
-    }
-  });
-
-  // Evaluate automation rules after the call is in its final analyzed state.
-  // Rule errors are logged but never fail the upload — the call has already
-  // been persisted successfully at this point.
-  try {
-    await ensureDefaultRules(userId);
-    const [updated] = await db
-      .select()
-      .from(callRecordsTable)
-      .where(eq(callRecordsTable.id, callId))
-      .limit(1);
-    if (updated) {
-      await evaluateAndExecuteRules({ userId, call: updated });
-      // After rules, walk the channel-bound flow (if any). Failures here are
-      // non-fatal — the call has already been persisted in its analyzed state.
-      try {
-        const flow = await resolveActiveFlowFor(userId, updated.channelId);
-        if (flow) {
-          // Re-read so flow sees latest values that rules may have set.
-          const [latest] = await db
-            .select()
-            .from(callRecordsTable)
-            .where(eq(callRecordsTable.id, callId))
-            .limit(1);
-          if (latest) {
-            await executeFlowForCall({ userId, call: latest, flow });
-          }
-        }
-      } catch (err) {
-        void err;
-      }
-    }
-  } catch (err) {
-    // Logger is request-scoped here; fall back to console-style structured log
-    // via the singleton import isn't ideal but rule failures are non-fatal.
-    void err;
-  }
 }
 
 router.get(
@@ -468,6 +364,60 @@ router.post(
       await runProcessing(userId, call.id, call.fileUrl, call.originalFilename);
     } catch (err) {
       req.log.error({ err }, "Reprocess failed");
+      await db
+        .update(callRecordsTable)
+        .set({
+          status: "error",
+          errorMessage: err instanceof Error ? err.message : "Unknown error",
+        })
+        .where(eq(callRecordsTable.id, call.id));
+    }
+    const out = await loadCallWithItems(userId, call.id);
+    res.json(serializeCall(out!.call, out!.items));
+  },
+);
+
+// Re-runs the analysis pipeline against an existing call. Prefers the
+// Twilio recording URL (re-downloaded with auth) and falls back to the
+// stored fileUrl. Status is reset to "processing" up front so the UI
+// reflects activity immediately.
+router.post(
+  "/calls/:id/retry-processing",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.userId!;
+    const id = String(req.params["id"]);
+    const [call] = await db
+      .select()
+      .from(callRecordsTable)
+      .where(
+        and(
+          eq(callRecordsTable.id, id),
+          eq(callRecordsTable.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!call) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    await db
+      .update(callRecordsTable)
+      .set({ status: "processing", errorMessage: null })
+      .where(eq(callRecordsTable.id, call.id));
+    try {
+      let audioBuffer: Buffer | null = null;
+      if (call.provider === "twilio" && call.recordingUrl) {
+        audioBuffer = await twilioProvider.downloadRecording(call.recordingUrl);
+      }
+      await runCallPipeline({
+        userId,
+        callId: call.id,
+        source: audioBuffer ? { audioBuffer } : { objectPath: call.fileUrl },
+        originalFilename: call.originalFilename,
+      });
+    } catch (err) {
+      req.log.error({ err }, "retry-processing failed");
       await db
         .update(callRecordsTable)
         .set({

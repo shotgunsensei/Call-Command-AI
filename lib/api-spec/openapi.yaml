@@ -691,6 +691,106 @@ paths:
               schema:
                 $ref: "#/components/schemas/Call"
 
+  /telephony/twilio/status:
+    get:
+      operationId: getTwilioStatus
+      tags: [telephony]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwilioStatus"
+
+  /telephony/events:
+    get:
+      operationId: listTelephonyEvents
+      tags: [telephony]
+      parameters:
+        - in: query
+          name: callId
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelephonyEventList"
+
+  /switchboard:
+    get:
+      operationId: getSwitchboard
+      tags: [switchboard]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SwitchboardResponse"
+
+  /setup/product-modes:
+    get:
+      operationId: listProductModes
+      tags: [setup]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductModeList"
+
+  /setup/state:
+    get:
+      operationId: getSetupState
+      tags: [setup]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupState"
+
+  /setup/apply-mode:
+    post:
+      operationId: applyProductMode
+      tags: [setup]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyProductModeBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplyProductModeResponse"
+
+  /calls/{id}/retry-processing:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      operationId: retryCallProcessing
+      tags: [calls]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+
   /channels:
     get:
       operationId: listChannels
@@ -954,6 +1054,12 @@ components:
         errorMessage: { type: ["string", "null"] }
         channelId: { type: ["string", "null"] }
         assignedUserId: { type: ["string", "null"] }
+        provider: { type: ["string", "null"] }
+        providerCallSid: { type: ["string", "null"] }
+        calledNumber: { type: ["string", "null"] }
+        callDirection: { type: ["string", "null"] }
+        recordingUrl: { type: ["string", "null"] }
+        recordingDurationSeconds: { type: ["integer", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         actionItems:
@@ -1335,10 +1441,20 @@ components:
         defaultRoute: { type: ["string", "null"] }
         isActive: { type: boolean }
         isDefault: { type: boolean }
+        greetingText: { type: ["string", "null"] }
+        recordCalls: { type: boolean }
+        allowVoicemail: { type: boolean }
+        businessHours: { type: ["object", "null"] }
+        afterHoursBehavior: { type: ["string", "null"] }
+        forwardNumber: { type: ["string", "null"] }
+        maxCallDurationSeconds: { type: ["integer", "null"] }
+        recordingConsentText: { type: ["string", "null"] }
+        assignedFlowId: { type: ["string", "null"] }
+        productMode: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
       required:
-        [id, userId, name, type, isActive, isDefault, createdAt, updatedAt]
+        [id, userId, name, type, isActive, isDefault, recordCalls, allowVoicemail, createdAt, updatedAt]
 
     ChannelList:
       type: array
@@ -1352,6 +1468,16 @@ components:
         type: { type: string }
         defaultRoute: { type: ["string", "null"] }
         isActive: { type: boolean }
+        greetingText: { type: ["string", "null"] }
+        recordCalls: { type: boolean }
+        allowVoicemail: { type: boolean }
+        businessHours: { type: ["object", "null"] }
+        afterHoursBehavior: { type: ["string", "null"] }
+        forwardNumber: { type: ["string", "null"] }
+        maxCallDurationSeconds: { type: ["integer", "null"] }
+        recordingConsentText: { type: ["string", "null"] }
+        assignedFlowId: { type: ["string", "null"] }
+        productMode: { type: ["string", "null"] }
       required: [name, type]
 
     UpdateChannelBody:
@@ -1362,6 +1488,134 @@ components:
         type: { type: string }
         defaultRoute: { type: ["string", "null"] }
         isActive: { type: boolean }
+        greetingText: { type: ["string", "null"] }
+        recordCalls: { type: boolean }
+        allowVoicemail: { type: boolean }
+        businessHours: { type: ["object", "null"] }
+        afterHoursBehavior: { type: ["string", "null"] }
+        forwardNumber: { type: ["string", "null"] }
+        maxCallDurationSeconds: { type: ["integer", "null"] }
+        recordingConsentText: { type: ["string", "null"] }
+        assignedFlowId: { type: ["string", "null"] }
+        productMode: { type: ["string", "null"] }
+
+    TelephonyEvent:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        callRecordId: { type: ["string", "null"] }
+        provider: { type: string }
+        eventType: { type: string }
+        providerEventId: { type: ["string", "null"] }
+        message: { type: ["string", "null"] }
+        rawPayload: { type: ["object", "null"] }
+        createdAt: { type: string, format: date-time }
+      required: [id, userId, provider, eventType, createdAt]
+
+    TelephonyEventList:
+      type: array
+      items: { $ref: "#/components/schemas/TelephonyEvent" }
+
+    TwilioStatus:
+      type: object
+      properties:
+        configured: { type: boolean }
+        hasAccountSid: { type: boolean }
+        hasAuthToken: { type: boolean }
+        webhookBaseUrl: { type: ["string", "null"] }
+        webhooks:
+          type: object
+          properties:
+            incoming: { type: string }
+            status: { type: string }
+            recording: { type: string }
+            transcription: { type: string }
+          required: [incoming, status, recording, transcription]
+      required: [configured, hasAccountSid, hasAuthToken, webhooks]
+
+    SwitchboardChannelEntry:
+      type: object
+      properties:
+        channel: { $ref: "#/components/schemas/Channel" }
+        callsLast24h: { type: integer }
+        recentCalls:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              status: { type: string }
+              callerPhone: { type: ["string", "null"] }
+              calledNumber: { type: ["string", "null"] }
+              customerName: { type: ["string", "null"] }
+              callType: { type: ["string", "null"] }
+              priority: { type: ["string", "null"] }
+              durationSeconds: { type: ["integer", "null"] }
+              provider: { type: ["string", "null"] }
+              createdAt: { type: string, format: date-time }
+            required: [id, status, createdAt]
+      required: [channel, callsLast24h, recentCalls]
+
+    SwitchboardResponse:
+      type: object
+      properties:
+        generatedAt: { type: string, format: date-time }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/SwitchboardChannelEntry" }
+      required: [generatedAt, entries]
+
+    ProductModeChannelDefault:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        greetingText: { type: ["string", "null"] }
+        recordCalls: { type: boolean }
+        allowVoicemail: { type: boolean }
+        isDefault: { type: boolean }
+      required: [name, type, recordCalls, allowVoicemail]
+
+    ProductMode:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string }
+        description: { type: string }
+        defaultChannels:
+          type: array
+          items: { $ref: "#/components/schemas/ProductModeChannelDefault" }
+      required: [id, label, description, defaultChannels]
+
+    ProductModeList:
+      type: array
+      items: { $ref: "#/components/schemas/ProductMode" }
+
+    ApplyProductModeBody:
+      type: object
+      properties:
+        modeId: { type: string }
+      required: [modeId]
+
+    ApplyProductModeResponse:
+      type: object
+      properties:
+        modeId: { type: string }
+        channelsCreated: { type: integer }
+        flowsCreated: { type: integer }
+        rulesCreated: { type: integer }
+      required: [modeId, channelsCreated, flowsCreated, rulesCreated]
+
+    SetupState:
+      type: object
+      properties:
+        productMode: { type: ["string", "null"] }
+        twilio: { $ref: "#/components/schemas/TwilioStatus" }
+        channelCount: { type: integer }
+        flowCount: { type: integer }
+        ruleCount: { type: integer }
+      required: [twilio, channelCount, flowCount, ruleCount]
 
     FlowNode:
       type: object

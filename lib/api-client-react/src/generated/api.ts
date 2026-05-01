@@ -18,6 +18,8 @@ import type {
 
 import type {
   ActionItem,
+  ApplyProductModeBody,
+  ApplyProductModeResponse,
   AutomationRule,
   AutomationRuleList,
   BillingPlan,
@@ -48,17 +50,23 @@ import type {
   Lead,
   LeadList,
   ListCallsParams,
+  ListTelephonyEventsParams,
   Me,
+  ProductModeList,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   RuleExecutionResult,
   SendFollowupBody,
   SendWebhookBody,
+  SetupState,
   SimulateCallBody,
+  SwitchboardResponse,
   Task,
   TaskList,
+  TelephonyEventList,
   Ticket,
   TicketList,
+  TwilioStatus,
   UpdateActionItemBody,
   UpdateAutomationRuleBody,
   UpdateCallFlowBody,
@@ -3249,6 +3257,529 @@ export const useSimulateInboundCall = <
   TContext
 > => {
   return useMutation(getSimulateInboundCallMutationOptions(options));
+};
+
+export const getGetTwilioStatusUrl = () => {
+  return `/api/telephony/twilio/status`;
+};
+
+export const getTwilioStatus = async (
+  options?: RequestInit,
+): Promise<TwilioStatus> => {
+  return customFetch<TwilioStatus>(getGetTwilioStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetTwilioStatusQueryKey = () => {
+  return [`/api/telephony/twilio/status`] as const;
+};
+
+export const getGetTwilioStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTwilioStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTwilioStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTwilioStatusQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getTwilioStatus>>> = ({
+    signal,
+  }) => getTwilioStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTwilioStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTwilioStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTwilioStatus>>
+>;
+export type GetTwilioStatusQueryError = ErrorType<unknown>;
+
+export function useGetTwilioStatus<
+  TData = Awaited<ReturnType<typeof getTwilioStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTwilioStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTwilioStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getListTelephonyEventsUrl = (
+  params?: ListTelephonyEventsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/telephony/events?${stringifiedParams}`
+    : `/api/telephony/events`;
+};
+
+export const listTelephonyEvents = async (
+  params?: ListTelephonyEventsParams,
+  options?: RequestInit,
+): Promise<TelephonyEventList> => {
+  return customFetch<TelephonyEventList>(getListTelephonyEventsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListTelephonyEventsQueryKey = (
+  params?: ListTelephonyEventsParams,
+) => {
+  return [`/api/telephony/events`, ...(params ? [params] : [])] as const;
+};
+
+export const getListTelephonyEventsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTelephonyEvents>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListTelephonyEventsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTelephonyEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListTelephonyEventsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listTelephonyEvents>>
+  > = ({ signal }) =>
+    listTelephonyEvents(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTelephonyEvents>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTelephonyEventsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTelephonyEvents>>
+>;
+export type ListTelephonyEventsQueryError = ErrorType<unknown>;
+
+export function useListTelephonyEvents<
+  TData = Awaited<ReturnType<typeof listTelephonyEvents>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListTelephonyEventsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTelephonyEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTelephonyEventsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetSwitchboardUrl = () => {
+  return `/api/switchboard`;
+};
+
+export const getSwitchboard = async (
+  options?: RequestInit,
+): Promise<SwitchboardResponse> => {
+  return customFetch<SwitchboardResponse>(getGetSwitchboardUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSwitchboardQueryKey = () => {
+  return [`/api/switchboard`] as const;
+};
+
+export const getGetSwitchboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSwitchboard>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSwitchboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSwitchboardQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSwitchboard>>> = ({
+    signal,
+  }) => getSwitchboard({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSwitchboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSwitchboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSwitchboard>>
+>;
+export type GetSwitchboardQueryError = ErrorType<unknown>;
+
+export function useGetSwitchboard<
+  TData = Awaited<ReturnType<typeof getSwitchboard>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSwitchboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSwitchboardQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getListProductModesUrl = () => {
+  return `/api/setup/product-modes`;
+};
+
+export const listProductModes = async (
+  options?: RequestInit,
+): Promise<ProductModeList> => {
+  return customFetch<ProductModeList>(getListProductModesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProductModesQueryKey = () => {
+  return [`/api/setup/product-modes`] as const;
+};
+
+export const getListProductModesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProductModes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProductModes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProductModesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listProductModes>>
+  > = ({ signal }) => listProductModes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProductModes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProductModesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProductModes>>
+>;
+export type ListProductModesQueryError = ErrorType<unknown>;
+
+export function useListProductModes<
+  TData = Awaited<ReturnType<typeof listProductModes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProductModes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProductModesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetSetupStateUrl = () => {
+  return `/api/setup/state`;
+};
+
+export const getSetupState = async (
+  options?: RequestInit,
+): Promise<SetupState> => {
+  return customFetch<SetupState>(getGetSetupStateUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSetupStateQueryKey = () => {
+  return [`/api/setup/state`] as const;
+};
+
+export const getGetSetupStateQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSetupState>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSetupState>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSetupStateQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSetupState>>> = ({
+    signal,
+  }) => getSetupState({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSetupState>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSetupStateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSetupState>>
+>;
+export type GetSetupStateQueryError = ErrorType<unknown>;
+
+export function useGetSetupState<
+  TData = Awaited<ReturnType<typeof getSetupState>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSetupState>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSetupStateQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getApplyProductModeUrl = () => {
+  return `/api/setup/apply-mode`;
+};
+
+export const applyProductMode = async (
+  applyProductModeBody: ApplyProductModeBody,
+  options?: RequestInit,
+): Promise<ApplyProductModeResponse> => {
+  return customFetch<ApplyProductModeResponse>(getApplyProductModeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(applyProductModeBody),
+  });
+};
+
+export const getApplyProductModeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyProductMode>>,
+    TError,
+    { data: BodyType<ApplyProductModeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof applyProductMode>>,
+  TError,
+  { data: BodyType<ApplyProductModeBody> },
+  TContext
+> => {
+  const mutationKey = ["applyProductMode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof applyProductMode>>,
+    { data: BodyType<ApplyProductModeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return applyProductMode(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApplyProductModeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof applyProductMode>>
+>;
+export type ApplyProductModeMutationBody = BodyType<ApplyProductModeBody>;
+export type ApplyProductModeMutationError = ErrorType<unknown>;
+
+export const useApplyProductMode = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyProductMode>>,
+    TError,
+    { data: BodyType<ApplyProductModeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof applyProductMode>>,
+  TError,
+  { data: BodyType<ApplyProductModeBody> },
+  TContext
+> => {
+  return useMutation(getApplyProductModeMutationOptions(options));
+};
+
+export const getRetryCallProcessingUrl = (id: string) => {
+  return `/api/calls/${id}/retry-processing`;
+};
+
+export const retryCallProcessing = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Call> => {
+  return customFetch<Call>(getRetryCallProcessingUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRetryCallProcessingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof retryCallProcessing>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof retryCallProcessing>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["retryCallProcessing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof retryCallProcessing>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return retryCallProcessing(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RetryCallProcessingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof retryCallProcessing>>
+>;
+
+export type RetryCallProcessingMutationError = ErrorType<unknown>;
+
+export const useRetryCallProcessing = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof retryCallProcessing>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof retryCallProcessing>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRetryCallProcessingMutationOptions(options));
 };
 
 export const getListChannelsUrl = () => {

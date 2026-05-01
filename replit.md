@@ -3,12 +3,29 @@
 CallCommand AI is a production application designed to transform phone call recordings into structured intelligence. It acts as an end-to-end business automation platform, integrating audio processing, AI-powered analysis, and customizable automation workflows. The platform aims to provide actionable insights from customer interactions, helping businesses manage leads, tickets, tasks, and automate follow-up processes.
 
 Key capabilities include:
-- Processing and transcribing phone call audio.
+- Processing and transcribing phone call audio (uploads + live Twilio inbound).
 - Analyzing call content to extract intent, sentiment, and key information.
 - Automating business workflows based on call analysis, such as creating support tickets, sales leads, or tasks.
 - Integrating with external services via webhooks and other mechanisms.
-- Supporting multi-line call orchestration with per-channel flow definitions.
-- Providing a dashboard for analytics and operational insights.
+- Supporting multi-line call orchestration with per-channel flow definitions and channel-aware TwiML.
+- Providing a dashboard for analytics and operational insights, plus a polled Switchboard view for live operations.
+
+# Phase 2 — Production telephony (current)
+
+Phase 2 adds first-class inbound telephony on top of the Phase 1 foundation. Highlights:
+
+- **Provider abstraction** under `artifacts/api-server/src/services/telephony/` with a working Twilio implementation and SIP / Asterisk / FreePBX scaffolding (stubs throw on `validateRequest`).
+- **Twilio webhooks** at `/api/twilio/voice/{incoming,status,recording,transcription}`. Signature-validated, no Clerk auth, urlencoded-aware. Recording webhook is idempotent via a `recordings_call_sid_unique` index.
+- **Channel extensions** (`channels` table): `greetingText`, `recordCalls`, `allowVoicemail`, `businessHours` (jsonb), `afterHoursBehavior`, `forwardNumber`, `maxCallDurationSeconds`, `recordingConsentText`, `assignedFlowId`, `productMode`. All of these flow into TwiML.
+- **Call record extensions** (`call_records` table): `provider`, `providerCallSid` (indexed), `calledNumber`, `callDirection`, `recordingUrl`, `recordingSid` (unique), `recordingDurationSeconds`. New status values (`incoming`, `ringing`, `in_progress`, `recording_ready`, `transcribing`, `analyzing`, `flow_running`, `completed`, `failed`, `busy`, `no_answer`) live alongside the old ones; the UI collapses them via a shared `lib/callStatus.ts` mapper into `pending / ready / error` buckets.
+- **`telephony_events` table** storing every provider event (raw payload jsonb, scoped to user). Surfaced on the Call Detail page as a polled timeline.
+- **Phone-number normalization** (`lib/phoneNumbers.ts`) applied on channel insert/update + on lookup. Inbound `To` is matched to a channel by E.164.
+- **Switchboard view** (`/switchboard`, polled every 7s) showing every channel with its last-24h calls.
+- **Productization modes** (`lib/productModes.ts`): MSP, Sales, Field Service, Medical (administrative intake only — never diagnostic), General. Each seeds default channels, flows, and rules.
+- **Setup wizard** (`/setup/telephony`) — pick a mode, wire Twilio, verify.
+- **Retry processing** endpoint (`POST /api/calls/:id/retry-processing`) re-downloads the Twilio recording with auth and re-runs the AI pipeline.
+
+See `artifacts/callcommand/README.md` for the operator-facing docs (env vars, Twilio webhook setup, recording-consent disclosure, troubleshooting).
 
 The project's vision is to enhance business efficiency by converting raw call data into organized, actionable intelligence, enabling better customer relationship management and operational automation.
 

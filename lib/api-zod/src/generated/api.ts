@@ -76,6 +76,12 @@ export const ListCallsResponseItem = zod.object({
   errorMessage: zod.string().nullish(),
   channelId: zod.string().nullish(),
   assignedUserId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  callDirection: zod.string().nullish(),
+  recordingUrl: zod.string().nullish(),
+  recordingDurationSeconds: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   actionItems: zod.array(
@@ -134,6 +140,12 @@ export const GetCallResponse = zod.object({
   errorMessage: zod.string().nullish(),
   channelId: zod.string().nullish(),
   assignedUserId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  callDirection: zod.string().nullish(),
+  recordingUrl: zod.string().nullish(),
+  recordingDurationSeconds: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   actionItems: zod.array(
@@ -190,6 +202,12 @@ export const ProcessCallResponse = zod.object({
   errorMessage: zod.string().nullish(),
   channelId: zod.string().nullish(),
   assignedUserId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  callDirection: zod.string().nullish(),
+  recordingUrl: zod.string().nullish(),
+  recordingDurationSeconds: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   actionItems: zod.array(
@@ -380,6 +398,12 @@ export const GetDashboardStatsResponse = zod.object({
       errorMessage: zod.string().nullish(),
       channelId: zod.string().nullish(),
       assignedUserId: zod.string().nullish(),
+      provider: zod.string().nullish(),
+      providerCallSid: zod.string().nullish(),
+      calledNumber: zod.string().nullish(),
+      callDirection: zod.string().nullish(),
+      recordingUrl: zod.string().nullish(),
+      recordingDurationSeconds: zod.number().nullish(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
       actionItems: zod.array(
@@ -787,6 +811,188 @@ export const SimulateInboundCallResponse = zod.object({
   errorMessage: zod.string().nullish(),
   channelId: zod.string().nullish(),
   assignedUserId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  callDirection: zod.string().nullish(),
+  recordingUrl: zod.string().nullish(),
+  recordingDurationSeconds: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  actionItems: zod.array(
+    zod.object({
+      id: zod.string(),
+      callRecordId: zod.string(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      dueDate: zod.coerce.date().nullish(),
+      priority: zod.string(),
+      status: zod.string(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+export const GetTwilioStatusResponse = zod.object({
+  configured: zod.boolean(),
+  hasAccountSid: zod.boolean(),
+  hasAuthToken: zod.boolean(),
+  webhookBaseUrl: zod.string().nullish(),
+  webhooks: zod.object({
+    incoming: zod.string(),
+    status: zod.string(),
+    recording: zod.string(),
+    transcription: zod.string(),
+  }),
+});
+
+export const ListTelephonyEventsQueryParams = zod.object({
+  callId: zod.coerce.string().optional(),
+});
+
+export const ListTelephonyEventsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  callRecordId: zod.string().nullish(),
+  provider: zod.string(),
+  eventType: zod.string(),
+  providerEventId: zod.string().nullish(),
+  message: zod.string().nullish(),
+  rawPayload: zod.object({}).passthrough().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListTelephonyEventsResponse = zod.array(
+  ListTelephonyEventsResponseItem,
+);
+
+export const GetSwitchboardResponse = zod.object({
+  generatedAt: zod.coerce.date(),
+  entries: zod.array(
+    zod.object({
+      channel: zod.object({
+        id: zod.string(),
+        userId: zod.string(),
+        name: zod.string(),
+        phoneNumber: zod.string().nullish(),
+        type: zod.string(),
+        defaultRoute: zod.string().nullish(),
+        isActive: zod.boolean(),
+        isDefault: zod.boolean(),
+        greetingText: zod.string().nullish(),
+        recordCalls: zod.boolean(),
+        allowVoicemail: zod.boolean(),
+        businessHours: zod.object({}).passthrough().nullish(),
+        afterHoursBehavior: zod.string().nullish(),
+        forwardNumber: zod.string().nullish(),
+        maxCallDurationSeconds: zod.number().nullish(),
+        recordingConsentText: zod.string().nullish(),
+        assignedFlowId: zod.string().nullish(),
+        productMode: zod.string().nullish(),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+      callsLast24h: zod.number(),
+      recentCalls: zod.array(
+        zod.object({
+          id: zod.string(),
+          status: zod.string(),
+          callerPhone: zod.string().nullish(),
+          calledNumber: zod.string().nullish(),
+          customerName: zod.string().nullish(),
+          callType: zod.string().nullish(),
+          priority: zod.string().nullish(),
+          durationSeconds: zod.number().nullish(),
+          provider: zod.string().nullish(),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+    }),
+  ),
+});
+
+export const ListProductModesResponseItem = zod.object({
+  id: zod.string(),
+  label: zod.string(),
+  description: zod.string(),
+  defaultChannels: zod.array(
+    zod.object({
+      name: zod.string(),
+      type: zod.string(),
+      greetingText: zod.string().nullish(),
+      recordCalls: zod.boolean(),
+      allowVoicemail: zod.boolean(),
+      isDefault: zod.boolean().optional(),
+    }),
+  ),
+});
+export const ListProductModesResponse = zod.array(ListProductModesResponseItem);
+
+export const GetSetupStateResponse = zod.object({
+  productMode: zod.string().nullish(),
+  twilio: zod.object({
+    configured: zod.boolean(),
+    hasAccountSid: zod.boolean(),
+    hasAuthToken: zod.boolean(),
+    webhookBaseUrl: zod.string().nullish(),
+    webhooks: zod.object({
+      incoming: zod.string(),
+      status: zod.string(),
+      recording: zod.string(),
+      transcription: zod.string(),
+    }),
+  }),
+  channelCount: zod.number(),
+  flowCount: zod.number(),
+  ruleCount: zod.number(),
+});
+
+export const ApplyProductModeBody = zod.object({
+  modeId: zod.string(),
+});
+
+export const ApplyProductModeResponse = zod.object({
+  modeId: zod.string(),
+  channelsCreated: zod.number(),
+  flowsCreated: zod.number(),
+  rulesCreated: zod.number(),
+});
+
+export const RetryCallProcessingParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RetryCallProcessingResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  originalFilename: zod.string(),
+  fileUrl: zod.string().nullish(),
+  transcriptText: zod.string().nullish(),
+  summary: zod.string().nullish(),
+  customerName: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  callType: zod.string().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  status: zod.string(),
+  durationSeconds: zod.number().nullish(),
+  keyPoints: zod.array(zod.string()),
+  followUpMessage: zod.string().nullish(),
+  internalNotes: zod.string().nullish(),
+  crmJson: zod.object({}).passthrough().nullish(),
+  suggestedTags: zod.array(zod.string()),
+  isDemo: zod.string(),
+  errorMessage: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  assignedUserId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  callDirection: zod.string().nullish(),
+  recordingUrl: zod.string().nullish(),
+  recordingDurationSeconds: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   actionItems: zod.array(
@@ -813,6 +1019,16 @@ export const ListChannelsResponseItem = zod.object({
   defaultRoute: zod.string().nullish(),
   isActive: zod.boolean(),
   isDefault: zod.boolean(),
+  greetingText: zod.string().nullish(),
+  recordCalls: zod.boolean(),
+  allowVoicemail: zod.boolean(),
+  businessHours: zod.object({}).passthrough().nullish(),
+  afterHoursBehavior: zod.string().nullish(),
+  forwardNumber: zod.string().nullish(),
+  maxCallDurationSeconds: zod.number().nullish(),
+  recordingConsentText: zod.string().nullish(),
+  assignedFlowId: zod.string().nullish(),
+  productMode: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -824,6 +1040,16 @@ export const CreateChannelBody = zod.object({
   type: zod.string(),
   defaultRoute: zod.string().nullish(),
   isActive: zod.boolean().optional(),
+  greetingText: zod.string().nullish(),
+  recordCalls: zod.boolean().optional(),
+  allowVoicemail: zod.boolean().optional(),
+  businessHours: zod.object({}).passthrough().nullish(),
+  afterHoursBehavior: zod.string().nullish(),
+  forwardNumber: zod.string().nullish(),
+  maxCallDurationSeconds: zod.number().nullish(),
+  recordingConsentText: zod.string().nullish(),
+  assignedFlowId: zod.string().nullish(),
+  productMode: zod.string().nullish(),
 });
 
 export const UpdateChannelParams = zod.object({
@@ -836,6 +1062,16 @@ export const UpdateChannelBody = zod.object({
   type: zod.string().optional(),
   defaultRoute: zod.string().nullish(),
   isActive: zod.boolean().optional(),
+  greetingText: zod.string().nullish(),
+  recordCalls: zod.boolean().optional(),
+  allowVoicemail: zod.boolean().optional(),
+  businessHours: zod.object({}).passthrough().nullish(),
+  afterHoursBehavior: zod.string().nullish(),
+  forwardNumber: zod.string().nullish(),
+  maxCallDurationSeconds: zod.number().nullish(),
+  recordingConsentText: zod.string().nullish(),
+  assignedFlowId: zod.string().nullish(),
+  productMode: zod.string().nullish(),
 });
 
 export const UpdateChannelResponse = zod.object({
@@ -847,6 +1083,16 @@ export const UpdateChannelResponse = zod.object({
   defaultRoute: zod.string().nullish(),
   isActive: zod.boolean(),
   isDefault: zod.boolean(),
+  greetingText: zod.string().nullish(),
+  recordCalls: zod.boolean(),
+  allowVoicemail: zod.boolean(),
+  businessHours: zod.object({}).passthrough().nullish(),
+  afterHoursBehavior: zod.string().nullish(),
+  forwardNumber: zod.string().nullish(),
+  maxCallDurationSeconds: zod.number().nullish(),
+  recordingConsentText: zod.string().nullish(),
+  assignedFlowId: zod.string().nullish(),
+  productMode: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

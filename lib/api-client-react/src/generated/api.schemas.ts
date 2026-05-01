@@ -113,6 +113,18 @@ export interface Call {
   channelId?: string | null;
   /** @nullable */
   assignedUserId?: string | null;
+  /** @nullable */
+  provider?: string | null;
+  /** @nullable */
+  providerCallSid?: string | null;
+  /** @nullable */
+  calledNumber?: string | null;
+  /** @nullable */
+  callDirection?: string | null;
+  /** @nullable */
+  recordingUrl?: string | null;
+  /** @nullable */
+  recordingDurationSeconds?: number | null;
   createdAt: string;
   updatedAt: string;
   actionItems: ActionItem[];
@@ -415,6 +427,11 @@ export interface RuleExecutionResult {
   log: RuleExecutionResultLogItem[];
 }
 
+/**
+ * @nullable
+ */
+export type ChannelBusinessHours = { [key: string]: unknown } | null;
+
 export interface Channel {
   id: string;
   userId: string;
@@ -426,11 +443,34 @@ export interface Channel {
   defaultRoute?: string | null;
   isActive: boolean;
   isDefault: boolean;
+  /** @nullable */
+  greetingText?: string | null;
+  recordCalls: boolean;
+  allowVoicemail: boolean;
+  /** @nullable */
+  businessHours?: ChannelBusinessHours;
+  /** @nullable */
+  afterHoursBehavior?: string | null;
+  /** @nullable */
+  forwardNumber?: string | null;
+  /** @nullable */
+  maxCallDurationSeconds?: number | null;
+  /** @nullable */
+  recordingConsentText?: string | null;
+  /** @nullable */
+  assignedFlowId?: string | null;
+  /** @nullable */
+  productMode?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export type ChannelList = Channel[];
+
+/**
+ * @nullable
+ */
+export type CreateChannelBodyBusinessHours = { [key: string]: unknown } | null;
 
 export interface CreateChannelBody {
   name: string;
@@ -440,7 +480,30 @@ export interface CreateChannelBody {
   /** @nullable */
   defaultRoute?: string | null;
   isActive?: boolean;
+  /** @nullable */
+  greetingText?: string | null;
+  recordCalls?: boolean;
+  allowVoicemail?: boolean;
+  /** @nullable */
+  businessHours?: CreateChannelBodyBusinessHours;
+  /** @nullable */
+  afterHoursBehavior?: string | null;
+  /** @nullable */
+  forwardNumber?: string | null;
+  /** @nullable */
+  maxCallDurationSeconds?: number | null;
+  /** @nullable */
+  recordingConsentText?: string | null;
+  /** @nullable */
+  assignedFlowId?: string | null;
+  /** @nullable */
+  productMode?: string | null;
 }
+
+/**
+ * @nullable
+ */
+export type UpdateChannelBodyBusinessHours = { [key: string]: unknown } | null;
 
 export interface UpdateChannelBody {
   name?: string;
@@ -450,6 +513,133 @@ export interface UpdateChannelBody {
   /** @nullable */
   defaultRoute?: string | null;
   isActive?: boolean;
+  /** @nullable */
+  greetingText?: string | null;
+  recordCalls?: boolean;
+  allowVoicemail?: boolean;
+  /** @nullable */
+  businessHours?: UpdateChannelBodyBusinessHours;
+  /** @nullable */
+  afterHoursBehavior?: string | null;
+  /** @nullable */
+  forwardNumber?: string | null;
+  /** @nullable */
+  maxCallDurationSeconds?: number | null;
+  /** @nullable */
+  recordingConsentText?: string | null;
+  /** @nullable */
+  assignedFlowId?: string | null;
+  /** @nullable */
+  productMode?: string | null;
+}
+
+/**
+ * @nullable
+ */
+export type TelephonyEventRawPayload = { [key: string]: unknown } | null;
+
+export interface TelephonyEvent {
+  id: string;
+  userId: string;
+  /** @nullable */
+  callRecordId?: string | null;
+  provider: string;
+  eventType: string;
+  /** @nullable */
+  providerEventId?: string | null;
+  /** @nullable */
+  message?: string | null;
+  /** @nullable */
+  rawPayload?: TelephonyEventRawPayload;
+  createdAt: string;
+}
+
+export type TelephonyEventList = TelephonyEvent[];
+
+export type TwilioStatusWebhooks = {
+  incoming: string;
+  status: string;
+  recording: string;
+  transcription: string;
+};
+
+export interface TwilioStatus {
+  configured: boolean;
+  hasAccountSid: boolean;
+  hasAuthToken: boolean;
+  /** @nullable */
+  webhookBaseUrl?: string | null;
+  webhooks: TwilioStatusWebhooks;
+}
+
+export type SwitchboardChannelEntryRecentCallsItem = {
+  id: string;
+  status: string;
+  /** @nullable */
+  callerPhone?: string | null;
+  /** @nullable */
+  calledNumber?: string | null;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  callType?: string | null;
+  /** @nullable */
+  priority?: string | null;
+  /** @nullable */
+  durationSeconds?: number | null;
+  /** @nullable */
+  provider?: string | null;
+  createdAt: string;
+};
+
+export interface SwitchboardChannelEntry {
+  channel: Channel;
+  callsLast24h: number;
+  recentCalls: SwitchboardChannelEntryRecentCallsItem[];
+}
+
+export interface SwitchboardResponse {
+  generatedAt: string;
+  entries: SwitchboardChannelEntry[];
+}
+
+export interface ProductModeChannelDefault {
+  name: string;
+  type: string;
+  /** @nullable */
+  greetingText?: string | null;
+  recordCalls: boolean;
+  allowVoicemail: boolean;
+  isDefault?: boolean;
+}
+
+export interface ProductMode {
+  id: string;
+  label: string;
+  description: string;
+  defaultChannels: ProductModeChannelDefault[];
+}
+
+export type ProductModeList = ProductMode[];
+
+export interface ApplyProductModeBody {
+  modeId: string;
+}
+
+export interface ApplyProductModeResponse {
+  modeId: string;
+  channelsCreated: number;
+  flowsCreated: number;
+  rulesCreated: number;
+}
+
+export interface SetupState {
+  /** @nullable */
+  productMode?: string | null;
+  twilio: TwilioStatus;
+  channelCount: number;
+  flowCount: number;
+  ruleCount: number;
 }
 
 export type FlowNodeConfig = { [key: string]: unknown };
@@ -600,4 +790,8 @@ export type ListCallsParams = {
   q?: string;
   status?: string;
   priority?: string;
+};
+
+export type ListTelephonyEventsParams = {
+  callId?: string;
 };

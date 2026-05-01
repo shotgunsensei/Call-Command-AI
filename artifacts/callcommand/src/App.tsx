@@ -25,6 +25,8 @@ import ChannelsPage from "@/pages/channels";
 import FlowsPage from "@/pages/flows";
 import FlowDetailPage from "@/pages/flow-detail";
 import SimulatePage from "@/pages/simulate";
+import SwitchboardPage from "@/pages/switchboard";
+import SetupTelephonyPage from "@/pages/setup-telephony";
 
 const queryClient = new QueryClient();
 
@@ -207,6 +209,8 @@ function ClerkProviderWithRoutes() {
           <ProtectedRoute path="/calls/:id" component={CallDetail} />
           <ProtectedRoute path="/integrations" component={Integrations} />
           <ProtectedRoute path="/automation-rules" component={AutomationRulesPage} />
+          <ProtectedRoute path="/switchboard" component={SwitchboardPage} />
+          <ProtectedRoute path="/setup/telephony" component={SetupTelephonyPage} />
           <ProtectedRoute path="/channels" component={ChannelsPage} />
           <ProtectedRoute path="/flows" component={FlowsPage} />
           <ProtectedRoute path="/flows/:id" component={FlowDetailPage} />

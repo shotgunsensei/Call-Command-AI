@@ -5,6 +5,7 @@
  * CallCommand AI API
  * OpenAPI spec version: 0.1.0
  */
+import type { ChannelBusinessHours } from "./channelBusinessHours";
 
 export interface Channel {
   id: string;
@@ -17,6 +18,24 @@ export interface Channel {
   defaultRoute?: string | null;
   isActive: boolean;
   isDefault: boolean;
+  /** @nullable */
+  greetingText?: string | null;
+  recordCalls: boolean;
+  allowVoicemail: boolean;
+  /** @nullable */
+  businessHours?: ChannelBusinessHours;
+  /** @nullable */
+  afterHoursBehavior?: string | null;
+  /** @nullable */
+  forwardNumber?: string | null;
+  /** @nullable */
+  maxCallDurationSeconds?: number | null;
+  /** @nullable */
+  recordingConsentText?: string | null;
+  /** @nullable */
+  assignedFlowId?: string | null;
+  /** @nullable */
+  productMode?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -18,6 +18,9 @@ import channelsRouter from "./channels";
 import flowsRouter from "./flows";
 import flowLogsRouter from "./flowLogs";
 import simulateRouter from "./simulate";
+import twilioRouter from "./twilio";
+import switchboardRouter from "./switchboard";
+import setupRouter from "./setup";
 
 const router: IRouter = Router();
 
@@ -40,5 +43,8 @@ router.use(channelsRouter);
 router.use(flowsRouter);
 router.use(flowLogsRouter);
 router.use(simulateRouter);
+router.use(twilioRouter);
+router.use(switchboardRouter);
+router.use(setupRouter);
 
 export default router;
