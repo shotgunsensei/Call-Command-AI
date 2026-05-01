@@ -930,6 +930,295 @@ paths:
               schema:
                 $ref: "#/components/schemas/FlowLogList"
 
+  /receptionist-profiles:
+    get:
+      operationId: listReceptionistProfiles
+      tags: [receptionist]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionistProfileList"
+    post:
+      operationId: createReceptionistProfile
+      tags: [receptionist]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReceptionistProfileBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionistProfile"
+
+  /receptionist-profiles/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getReceptionistProfile
+      tags: [receptionist]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionistProfile"
+    patch:
+      operationId: updateReceptionistProfile
+      tags: [receptionist]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReceptionistProfileBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionistProfile"
+    delete:
+      operationId: deleteReceptionistProfile
+      tags: [receptionist]
+      responses:
+        "204": { description: Deleted }
+
+  /transfer-targets:
+    get:
+      operationId: listTransferTargets
+      tags: [transferTargets]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferTargetList"
+    post:
+      operationId: createTransferTarget
+      tags: [transferTargets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransferTargetBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferTarget"
+
+  /transfer-targets/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    patch:
+      operationId: updateTransferTarget
+      tags: [transferTargets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTransferTargetBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferTarget"
+    delete:
+      operationId: deleteTransferTarget
+      tags: [transferTargets]
+      responses:
+        "204": { description: Deleted }
+
+  /live-sessions:
+    get:
+      operationId: listLiveSessions
+      tags: [liveSessions]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveCallSessionList"
+
+  /live-sessions/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getLiveSession
+      tags: [liveSessions]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveCallSession"
+
+  /live-sessions/{id}/mark-urgent:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      operationId: markLiveSessionUrgent
+      tags: [liveSessions]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveCallSession"
+
+  /live-sessions/{id}/transfer:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      operationId: transferLiveSession
+      tags: [liveSessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferLiveSessionBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveCallSession"
+
+  /live-sessions/{id}/end:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      operationId: endLiveSession
+      tags: [liveSessions]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveCallSession"
+
+  /live-sessions/{id}/add-note:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      operationId: addLiveSessionNote
+      tags: [liveSessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddLiveSessionNoteBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveCallSession"
+
+  /simulate/live-call/start:
+    post:
+      operationId: startSimulatedLiveCall
+      tags: [simulate]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartSimulatedLiveCallBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveCallSession"
+
+  /simulate/live-call/{id}/say:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      operationId: simulateLiveCallSay
+      tags: [simulate]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulatedLiveCallSayBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulatedLiveCallTurn"
+
+  /simulate/live-call/{id}/end:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      operationId: endSimulatedLiveCall
+      tags: [simulate]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveCallSession"
+
   /simulate-call:
     post:
       operationId: simulateCallWithFlow
@@ -1451,6 +1740,11 @@ components:
         recordingConsentText: { type: ["string", "null"] }
         assignedFlowId: { type: ["string", "null"] }
         productMode: { type: ["string", "null"] }
+        liveBehavior: { type: ["string", "null"] }
+        receptionistProfileId: { type: ["string", "null"] }
+        requireRecordingConsent: { type: ["boolean", "null"] }
+        consentScript: { type: ["string", "null"] }
+        consentRequiredBeforeRecording: { type: ["boolean", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
       required:
@@ -1478,6 +1772,11 @@ components:
         recordingConsentText: { type: ["string", "null"] }
         assignedFlowId: { type: ["string", "null"] }
         productMode: { type: ["string", "null"] }
+        liveBehavior: { type: ["string", "null"] }
+        receptionistProfileId: { type: ["string", "null"] }
+        requireRecordingConsent: { type: ["boolean", "null"] }
+        consentScript: { type: ["string", "null"] }
+        consentRequiredBeforeRecording: { type: ["boolean", "null"] }
       required: [name, type]
 
     UpdateChannelBody:
@@ -1498,6 +1797,11 @@ components:
         recordingConsentText: { type: ["string", "null"] }
         assignedFlowId: { type: ["string", "null"] }
         productMode: { type: ["string", "null"] }
+        liveBehavior: { type: ["string", "null"] }
+        receptionistProfileId: { type: ["string", "null"] }
+        requireRecordingConsent: { type: ["boolean", "null"] }
+        consentScript: { type: ["string", "null"] }
+        consentRequiredBeforeRecording: { type: ["boolean", "null"] }
 
     TelephonyEvent:
       type: object
@@ -1564,6 +1868,9 @@ components:
         entries:
           type: array
           items: { $ref: "#/components/schemas/SwitchboardChannelEntry" }
+        liveSessions:
+          type: array
+          items: { $ref: "#/components/schemas/LiveCallSessionSummary" }
       required: [generatedAt, entries]
 
     ProductModeChannelDefault:
@@ -1738,3 +2045,256 @@ components:
           type: array
           items: { $ref: "#/components/schemas/FlowLog" }
       required: [callId, nodesExecuted, actionsExecuted, log]
+
+    IntakeField:
+      type: object
+      properties:
+        key: { type: string }
+        label: { type: string }
+        required: { type: boolean }
+        allowedValues:
+          type: array
+          items: { type: string }
+        prompt: { type: ["string", "null"] }
+      required: [key, label, required]
+
+    IntakeSchema:
+      type: object
+      properties:
+        fields:
+          type: array
+          items: { $ref: "#/components/schemas/IntakeField" }
+      required: [fields]
+
+    EscalationRules:
+      type: object
+      properties:
+        emergencyKeywords:
+          type: array
+          items: { type: string }
+        angrySentimentEscalates: { type: boolean }
+        vipNumbers:
+          type: array
+          items: { type: string }
+        afterHoursEmergencyTransferTargetId: { type: ["string", "null"] }
+
+    ReceptionistProfile:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        channelId: { type: ["string", "null"] }
+        name: { type: string }
+        voiceProvider: { type: string }
+        greetingScript: { type: string }
+        fallbackScript: { type: ["string", "null"] }
+        escalationScript: { type: ["string", "null"] }
+        voicemailScript: { type: ["string", "null"] }
+        tone: { type: string }
+        intakeSchema: { $ref: "#/components/schemas/IntakeSchema" }
+        escalationRules: { $ref: "#/components/schemas/EscalationRules" }
+        enabled: { type: boolean }
+        isDefault: { type: boolean }
+        productMode: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        [id, userId, name, voiceProvider, greetingScript, tone, enabled, isDefault, createdAt, updatedAt]
+
+    ReceptionistProfileList:
+      type: array
+      items: { $ref: "#/components/schemas/ReceptionistProfile" }
+
+    CreateReceptionistProfileBody:
+      type: object
+      properties:
+        name: { type: string }
+        channelId: { type: ["string", "null"] }
+        voiceProvider: { type: ["string", "null"] }
+        greetingScript: { type: string }
+        fallbackScript: { type: ["string", "null"] }
+        escalationScript: { type: ["string", "null"] }
+        voicemailScript: { type: ["string", "null"] }
+        tone: { type: ["string", "null"] }
+        intakeSchema: { $ref: "#/components/schemas/IntakeSchema" }
+        escalationRules: { $ref: "#/components/schemas/EscalationRules" }
+        enabled: { type: ["boolean", "null"] }
+        isDefault: { type: ["boolean", "null"] }
+        productMode: { type: ["string", "null"] }
+      required: [name, greetingScript]
+
+    UpdateReceptionistProfileBody:
+      type: object
+      properties:
+        name: { type: string }
+        channelId: { type: ["string", "null"] }
+        voiceProvider: { type: ["string", "null"] }
+        greetingScript: { type: ["string", "null"] }
+        fallbackScript: { type: ["string", "null"] }
+        escalationScript: { type: ["string", "null"] }
+        voicemailScript: { type: ["string", "null"] }
+        tone: { type: ["string", "null"] }
+        intakeSchema: { $ref: "#/components/schemas/IntakeSchema" }
+        escalationRules: { $ref: "#/components/schemas/EscalationRules" }
+        enabled: { type: ["boolean", "null"] }
+        isDefault: { type: ["boolean", "null"] }
+
+    TransferTarget:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        type: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        targetUserId: { type: ["string", "null"] }
+        queueName: { type: ["string", "null"] }
+        businessHours: { type: ["object", "null"] }
+        priority: { type: integer }
+        enabled: { type: boolean }
+        productMode: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, userId, name, type, priority, enabled, createdAt, updatedAt]
+
+    TransferTargetList:
+      type: array
+      items: { $ref: "#/components/schemas/TransferTarget" }
+
+    CreateTransferTargetBody:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        targetUserId: { type: ["string", "null"] }
+        queueName: { type: ["string", "null"] }
+        businessHours: { type: ["object", "null"] }
+        priority: { type: ["integer", "null"] }
+        enabled: { type: ["boolean", "null"] }
+        productMode: { type: ["string", "null"] }
+      required: [name, type]
+
+    UpdateTransferTargetBody:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        targetUserId: { type: ["string", "null"] }
+        queueName: { type: ["string", "null"] }
+        businessHours: { type: ["object", "null"] }
+        priority: { type: ["integer", "null"] }
+        enabled: { type: ["boolean", "null"] }
+
+    LiveSessionNote:
+      type: object
+      properties:
+        authorUserId: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [authorUserId, body, createdAt]
+
+    LiveCallSession:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        channelId: { type: ["string", "null"] }
+        callRecordId: { type: ["string", "null"] }
+        receptionistProfileId: { type: ["string", "null"] }
+        provider: { type: ["string", "null"] }
+        providerCallSid: { type: ["string", "null"] }
+        callerPhone: { type: ["string", "null"] }
+        calledNumber: { type: ["string", "null"] }
+        sessionStatus: { type: string }
+        currentStep: { type: ["string", "null"] }
+        lastQuestionKey: { type: ["string", "null"] }
+        askedFieldKeys:
+          type: array
+          items: { type: string }
+        collectedData: { type: ["object", "null"] }
+        intent: { type: ["string", "null"] }
+        priority: { type: ["string", "null"] }
+        sentiment: { type: ["string", "null"] }
+        transferTarget: { type: ["string", "null"] }
+        escalationReason: { type: ["string", "null"] }
+        transcriptLive: { type: ["string", "null"] }
+        aiSummaryLive: { type: ["string", "null"] }
+        notes:
+          type: array
+          items: { $ref: "#/components/schemas/LiveSessionNote" }
+        createdObjectIds: { type: ["object", "null"] }
+        isDemo: { type: ["string", "null"] }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: ["string", "null"], format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, userId, sessionStatus, startedAt, updatedAt]
+
+    LiveCallSessionList:
+      type: array
+      items: { $ref: "#/components/schemas/LiveCallSession" }
+
+    LiveCallSessionSummary:
+      type: object
+      properties:
+        id: { type: string }
+        channelId: { type: ["string", "null"] }
+        callRecordId: { type: ["string", "null"] }
+        receptionistProfileId: { type: ["string", "null"] }
+        provider: { type: ["string", "null"] }
+        callerPhone: { type: ["string", "null"] }
+        calledNumber: { type: ["string", "null"] }
+        sessionStatus: { type: string }
+        currentStep: { type: ["string", "null"] }
+        lastQuestionKey: { type: ["string", "null"] }
+        collectedData: { type: ["object", "null"] }
+        intent: { type: ["string", "null"] }
+        priority: { type: ["string", "null"] }
+        sentiment: { type: ["string", "null"] }
+        transferTarget: { type: ["string", "null"] }
+        escalationReason: { type: ["string", "null"] }
+        transcriptLive: { type: ["string", "null"] }
+        aiSummaryLive: { type: ["string", "null"] }
+        notesCount: { type: integer }
+        createdObjectIds: { type: ["object", "null"] }
+        isDemo: { type: boolean }
+        startedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, sessionStatus, isDemo, startedAt, updatedAt]
+
+    TransferLiveSessionBody:
+      type: object
+      properties:
+        targetId: { type: string }
+        reason: { type: ["string", "null"] }
+      required: [targetId]
+
+    AddLiveSessionNoteBody:
+      type: object
+      properties:
+        body: { type: string }
+      required: [body]
+
+    StartSimulatedLiveCallBody:
+      type: object
+      properties:
+        channelId: { type: ["string", "null"] }
+        receptionistProfileId: { type: ["string", "null"] }
+        callerPhone: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+      required: []
+
+    SimulatedLiveCallSayBody:
+      type: object
+      properties:
+        text: { type: string }
+      required: [text]
+
+    SimulatedLiveCallTurn:
+      type: object
+      properties:
+        session: { $ref: "#/components/schemas/LiveCallSession" }
+        decision: { type: ["object", "null"] }
+        transcriptDelta: { type: ["string", "null"] }
+      required: [session]

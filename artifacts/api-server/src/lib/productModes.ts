@@ -1,13 +1,17 @@
 /**
  * Productization modes — pre-baked starter configurations for common call
  * orchestration use-cases. Each mode declares default channels, automation
- * rule seeds, and dashboard labels. Applied IDEMPOTENTLY by the setup
- * wizard: a slot is only seeded if the user has zero of that resource.
+ * rule seeds, dashboard labels, AI receptionist profiles, and transfer
+ * targets. Applied IDEMPOTENTLY by the setup wizard: a slot is only
+ * seeded if the user has zero of that resource type.
  *
  * IMPORTANT: This is administrative routing only. The Medical mode
  * intentionally avoids any clinical/diagnostic claims — its actions are
- * scheduling and intake routing, never medical advice.
+ * scheduling and intake routing, never medical advice. Field service has
+ * NO automotive diagnostic claims either.
  */
+
+import type { ChannelLiveBehavior, IntakeSchema, EscalationRules } from "@workspace/db";
 
 export type ProductModeId =
   | "msp"
@@ -24,12 +28,38 @@ export interface ChannelSeed {
   recordCalls: boolean;
   allowVoicemail: boolean;
   isDefault?: boolean;
+  liveBehavior?: ChannelLiveBehavior;
+  /** Name of a receptionist seed in `receptionistProfiles` to bind. */
+  receptionistProfileName?: string;
+  requireRecordingConsent?: boolean;
+  consentScript?: string;
+  consentRequiredBeforeRecording?: boolean;
 }
 
 export interface RuleSeed {
   name: string;
   conditions: Record<string, unknown>;
   actions: Array<Record<string, unknown>>;
+}
+
+export interface ReceptionistProfileSeed {
+  name: string;
+  greetingScript: string;
+  fallbackScript?: string;
+  escalationScript?: string;
+  voicemailScript?: string;
+  tone: "professional" | "friendly" | "urgent" | "concise" | "warm";
+  intakeSchema: IntakeSchema;
+  escalationRules: EscalationRules;
+  isDefault?: boolean;
+}
+
+export interface TransferTargetSeed {
+  name: string;
+  type: "user" | "queue" | "external_number" | "voicemail";
+  phoneNumber?: string | null;
+  queueName?: string | null;
+  priority?: number;
 }
 
 export interface ProductMode {
@@ -42,6 +72,8 @@ export interface ProductMode {
   };
   channels: ChannelSeed[];
   rules: RuleSeed[];
+  receptionistProfiles: ReceptionistProfileSeed[];
+  transferTargets: TransferTargetSeed[];
 }
 
 const STD_CONSENT =
@@ -67,6 +99,8 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         recordCalls: true,
         allowVoicemail: true,
         isDefault: true,
+        liveBehavior: "ai_receptionist",
+        receptionistProfileName: "MSP Support Receptionist",
       },
       {
         name: "Emergency Line",
@@ -76,6 +110,8 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         afterHoursBehavior: "voicemail",
         recordCalls: true,
         allowVoicemail: true,
+        liveBehavior: "ai_screen_then_transfer",
+        receptionistProfileName: "MSP Support Receptionist",
       },
       {
         name: "Billing Line",
@@ -108,6 +144,61 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         actions: [{ type: "create_task", titleTemplate: "URGENT escalate: {{customerName}}" }],
       },
     ],
+    receptionistProfiles: [
+      {
+        name: "MSP Support Receptionist",
+        greetingScript:
+          "Thank you for calling support. I'm a virtual receptionist and I can help route your call.",
+        fallbackScript:
+          "I'm having trouble hearing you. We'll follow up by email. Goodbye.",
+        escalationScript:
+          "This sounds urgent. I'm connecting you to our on-call engineer right now.",
+        voicemailScript:
+          "Please leave your name, company, and a brief description of the issue after the tone.",
+        tone: "professional",
+        intakeSchema: {
+          fields: [
+            { key: "caller_name", label: "your name", required: true },
+            { key: "company", label: "company name", required: true },
+            { key: "issue_summary", label: "issue you're calling about", required: true },
+            {
+              key: "urgency",
+              label: "urgency",
+              required: true,
+              allowedValues: ["normal", "high", "emergency"],
+              prompt:
+                "How urgent is this? Please say one of: normal, high, or emergency.",
+            },
+          ],
+        },
+        escalationRules: {
+          emergencyKeywords: [
+            "outage",
+            "down",
+            "ransomware",
+            "breach",
+            "no internet",
+            "completely down",
+          ],
+          angrySentimentEscalates: true,
+        },
+        isDefault: true,
+      },
+    ],
+    transferTargets: [
+      {
+        name: "On-call Engineer",
+        type: "queue",
+        queueName: "msp-oncall",
+        priority: 10,
+      },
+      {
+        name: "Billing Team",
+        type: "queue",
+        queueName: "msp-billing",
+        priority: 50,
+      },
+    ],
   },
   sales: {
     id: "sales",
@@ -128,6 +219,8 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         recordCalls: true,
         allowVoicemail: true,
         isDefault: true,
+        liveBehavior: "ai_receptionist",
+        receptionistProfileName: "Sales Intake Receptionist",
       },
       {
         name: "Existing Customers Line",
@@ -157,12 +250,50 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         ],
       },
     ],
+    receptionistProfiles: [
+      {
+        name: "Sales Intake Receptionist",
+        greetingScript:
+          "Thanks for calling sales. I'm a virtual receptionist and can take a few details so the right rep can follow up.",
+        fallbackScript:
+          "Sorry, I missed that. We'll reach out by email. Goodbye.",
+        voicemailScript:
+          "Please leave your name, company, contact info, and what you're evaluating.",
+        tone: "friendly",
+        intakeSchema: {
+          fields: [
+            { key: "caller_name", label: "your name", required: true },
+            { key: "company", label: "company name", required: true },
+            { key: "callback_number", label: "best callback number", required: true },
+            { key: "interest", label: "what you're evaluating", required: true },
+            {
+              key: "timeline",
+              label: "timeline",
+              required: false,
+              allowedValues: ["this week", "this month", "this quarter", "exploring"],
+            },
+          ],
+        },
+        escalationRules: {
+          angrySentimentEscalates: false,
+        },
+        isDefault: true,
+      },
+    ],
+    transferTargets: [
+      {
+        name: "Sales Round-Robin",
+        type: "queue",
+        queueName: "sales-rr",
+        priority: 10,
+      },
+    ],
   },
   field_service: {
     id: "field_service",
     label: "Field Service",
     description:
-      "Dispatch-driven inbound for field service teams. Default dispatch and after-hours lines with job creation and dispatcher notifications.",
+      "Dispatch-driven inbound for field service teams (plumbing, HVAC, electrical, locksmiths). Default dispatch and after-hours lines with job creation and dispatcher notifications. NOTE: never makes automotive diagnostic claims — diagnosis is the technician's job.",
     dashboardLabels: {
       primaryArtifact: "Jobs",
       secondaryArtifact: "Dispatch",
@@ -177,6 +308,8 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         recordCalls: true,
         allowVoicemail: true,
         isDefault: true,
+        liveBehavior: "ai_receptionist",
+        receptionistProfileName: "Field Service Dispatcher",
       },
       {
         name: "After Hours Line",
@@ -186,6 +319,8 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         afterHoursBehavior: "voicemail",
         recordCalls: true,
         allowVoicemail: true,
+        liveBehavior: "ai_after_hours_intake",
+        receptionistProfileName: "Field Service Dispatcher",
       },
     ],
     rules: [
@@ -202,12 +337,57 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         ],
       },
     ],
+    receptionistProfiles: [
+      {
+        name: "Field Service Dispatcher",
+        greetingScript:
+          "Thank you for calling. I'm a virtual dispatcher and can take your details so a technician can be scheduled. I won't diagnose the issue over the phone — our technician will assess on site.",
+        fallbackScript:
+          "Sorry, I missed that. A dispatcher will follow up. Goodbye.",
+        voicemailScript:
+          "Please leave your name, service address, callback number, and a brief description of the issue.",
+        tone: "professional",
+        intakeSchema: {
+          fields: [
+            { key: "caller_name", label: "your name", required: true },
+            { key: "callback_number", label: "best callback number", required: true },
+            { key: "service_address", label: "service address", required: true },
+            { key: "issue_summary", label: "issue you're seeing", required: true },
+            {
+              key: "urgency",
+              label: "urgency",
+              required: true,
+              allowedValues: ["routine", "same-day", "emergency"],
+            },
+          ],
+        },
+        escalationRules: {
+          emergencyKeywords: [
+            "no heat",
+            "flooding",
+            "gas leak",
+            "no power",
+            "smoke",
+          ],
+          angrySentimentEscalates: false,
+        },
+        isDefault: true,
+      },
+    ],
+    transferTargets: [
+      {
+        name: "On-call Dispatcher",
+        type: "queue",
+        queueName: "field-oncall",
+        priority: 10,
+      },
+    ],
   },
   medical: {
     id: "medical",
     label: "Medical / Office Intake",
     description:
-      "Administrative intake for medical and dental offices. Scheduling and general questions only — never makes diagnostic claims, never offers medical advice.",
+      "Administrative intake for medical and dental offices. Scheduling and general questions only — never makes diagnostic claims, never offers medical advice or triage.",
     dashboardLabels: {
       primaryArtifact: "Intake Tasks",
       secondaryArtifact: "Scheduling",
@@ -222,6 +402,11 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         recordCalls: true,
         allowVoicemail: true,
         isDefault: true,
+        liveBehavior: "ai_receptionist",
+        receptionistProfileName: "Office Scheduling Receptionist",
+        requireRecordingConsent: true,
+        consentScript:
+          "This call may be recorded for quality and training purposes. By staying on the line you consent.",
       },
       {
         name: "General Questions Line",
@@ -249,12 +434,55 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         ],
       },
     ],
+    receptionistProfiles: [
+      {
+        name: "Office Scheduling Receptionist",
+        greetingScript:
+          "Thank you for calling. I'm a virtual receptionist for our office. I can collect your contact information and the reason for your call so our staff can return it. I cannot give medical advice or discuss clinical matters.",
+        fallbackScript:
+          "Sorry, I missed that. Our staff will return your call. Goodbye.",
+        voicemailScript:
+          "Please leave your name, callback number, and the reason for your call.",
+        tone: "warm",
+        intakeSchema: {
+          fields: [
+            { key: "caller_name", label: "your name", required: true },
+            { key: "callback_number", label: "best callback number", required: true },
+            {
+              key: "request_type",
+              label: "type of request",
+              required: true,
+              allowedValues: [
+                "schedule appointment",
+                "reschedule appointment",
+                "billing question",
+                "general question",
+              ],
+            },
+            { key: "preferred_callback_time", label: "preferred callback time", required: false },
+          ],
+        },
+        escalationRules: {
+          // Intentionally empty: medical mode never auto-escalates on
+          // keywords. Anything urgent is handled by staff, not the bot.
+        },
+        isDefault: true,
+      },
+    ],
+    transferTargets: [
+      {
+        name: "Front Desk",
+        type: "queue",
+        queueName: "front-desk",
+        priority: 10,
+      },
+    ],
   },
   general: {
     id: "general",
     label: "General Business",
     description:
-      "A neutral starter for any inbound call workflow. One default line, no specialized rules.",
+      "A neutral starter for any inbound call workflow. One default line, optional AI receptionist.",
     dashboardLabels: {
       primaryArtifact: "Calls",
       secondaryArtifact: "Tasks",
@@ -269,9 +497,31 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         recordCalls: true,
         allowVoicemail: true,
         isDefault: true,
+        liveBehavior: "record_only",
       },
     ],
     rules: [],
+    receptionistProfiles: [
+      {
+        name: "General Receptionist",
+        greetingScript:
+          "Thank you for calling. I'm a virtual receptionist and can take a message for you.",
+        fallbackScript: "Sorry, I missed that. We'll follow up. Goodbye.",
+        voicemailScript:
+          "Please leave your name, callback number, and message after the tone.",
+        tone: "professional",
+        intakeSchema: {
+          fields: [
+            { key: "caller_name", label: "your name", required: true },
+            { key: "callback_number", label: "best callback number", required: true },
+            { key: "reason", label: "reason for your call", required: true },
+          ],
+        },
+        escalationRules: {},
+        isDefault: true,
+      },
+    ],
+    transferTargets: [],
   },
 };
 

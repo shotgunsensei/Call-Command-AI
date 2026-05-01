@@ -5,9 +5,11 @@
  * CallCommand AI API
  * OpenAPI spec version: 0.1.0
  */
+import type { LiveCallSessionSummary } from "./liveCallSessionSummary";
 import type { SwitchboardChannelEntry } from "./switchboardChannelEntry";
 
 export interface SwitchboardResponse {
   generatedAt: Date;
   entries: SwitchboardChannelEntry[];
+  liveSessions?: LiveCallSessionSummary[];
 }

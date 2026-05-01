@@ -461,6 +461,16 @@ export interface Channel {
   assignedFlowId?: string | null;
   /** @nullable */
   productMode?: string | null;
+  /** @nullable */
+  liveBehavior?: string | null;
+  /** @nullable */
+  receptionistProfileId?: string | null;
+  /** @nullable */
+  requireRecordingConsent?: boolean | null;
+  /** @nullable */
+  consentScript?: string | null;
+  /** @nullable */
+  consentRequiredBeforeRecording?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -498,6 +508,16 @@ export interface CreateChannelBody {
   assignedFlowId?: string | null;
   /** @nullable */
   productMode?: string | null;
+  /** @nullable */
+  liveBehavior?: string | null;
+  /** @nullable */
+  receptionistProfileId?: string | null;
+  /** @nullable */
+  requireRecordingConsent?: boolean | null;
+  /** @nullable */
+  consentScript?: string | null;
+  /** @nullable */
+  consentRequiredBeforeRecording?: boolean | null;
 }
 
 /**
@@ -531,6 +551,16 @@ export interface UpdateChannelBody {
   assignedFlowId?: string | null;
   /** @nullable */
   productMode?: string | null;
+  /** @nullable */
+  liveBehavior?: string | null;
+  /** @nullable */
+  receptionistProfileId?: string | null;
+  /** @nullable */
+  requireRecordingConsent?: boolean | null;
+  /** @nullable */
+  consentScript?: string | null;
+  /** @nullable */
+  consentRequiredBeforeRecording?: boolean | null;
 }
 
 /**
@@ -598,9 +628,67 @@ export interface SwitchboardChannelEntry {
   recentCalls: SwitchboardChannelEntryRecentCallsItem[];
 }
 
+/**
+ * @nullable
+ */
+export type LiveCallSessionSummaryCollectedData = {
+  [key: string]: unknown;
+} | null;
+
+/**
+ * @nullable
+ */
+export type LiveCallSessionSummaryCreatedObjectIds = {
+  [key: string]: unknown;
+} | null;
+
+export interface LiveCallSessionSummary {
+  id: string;
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  callRecordId?: string | null;
+  /** @nullable */
+  receptionistProfileId?: string | null;
+  /** @nullable */
+  provider?: string | null;
+  /** @nullable */
+  callerPhone?: string | null;
+  /** @nullable */
+  calledNumber?: string | null;
+  sessionStatus: string;
+  /** @nullable */
+  currentStep?: string | null;
+  /** @nullable */
+  lastQuestionKey?: string | null;
+  /** @nullable */
+  collectedData?: LiveCallSessionSummaryCollectedData;
+  /** @nullable */
+  intent?: string | null;
+  /** @nullable */
+  priority?: string | null;
+  /** @nullable */
+  sentiment?: string | null;
+  /** @nullable */
+  transferTarget?: string | null;
+  /** @nullable */
+  escalationReason?: string | null;
+  /** @nullable */
+  transcriptLive?: string | null;
+  /** @nullable */
+  aiSummaryLive?: string | null;
+  notesCount?: number;
+  /** @nullable */
+  createdObjectIds?: LiveCallSessionSummaryCreatedObjectIds;
+  isDemo: boolean;
+  startedAt: string;
+  updatedAt: string;
+}
+
 export interface SwitchboardResponse {
   generatedAt: string;
   entries: SwitchboardChannelEntry[];
+  liveSessions?: LiveCallSessionSummary[];
 }
 
 export interface ProductModeChannelDefault {
@@ -784,6 +872,287 @@ export interface FlowExecutionResult {
   /** @nullable */
   endedAt?: string | null;
   log: FlowLog[];
+}
+
+export interface IntakeField {
+  key: string;
+  label: string;
+  required: boolean;
+  allowedValues?: string[];
+  /** @nullable */
+  prompt?: string | null;
+}
+
+export interface IntakeSchema {
+  fields: IntakeField[];
+}
+
+export interface EscalationRules {
+  emergencyKeywords?: string[];
+  angrySentimentEscalates?: boolean;
+  vipNumbers?: string[];
+  /** @nullable */
+  afterHoursEmergencyTransferTargetId?: string | null;
+}
+
+export interface ReceptionistProfile {
+  id: string;
+  userId: string;
+  /** @nullable */
+  channelId?: string | null;
+  name: string;
+  voiceProvider: string;
+  greetingScript: string;
+  /** @nullable */
+  fallbackScript?: string | null;
+  /** @nullable */
+  escalationScript?: string | null;
+  /** @nullable */
+  voicemailScript?: string | null;
+  tone: string;
+  intakeSchema?: IntakeSchema;
+  escalationRules?: EscalationRules;
+  enabled: boolean;
+  isDefault: boolean;
+  /** @nullable */
+  productMode?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ReceptionistProfileList = ReceptionistProfile[];
+
+export interface CreateReceptionistProfileBody {
+  name: string;
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  voiceProvider?: string | null;
+  greetingScript: string;
+  /** @nullable */
+  fallbackScript?: string | null;
+  /** @nullable */
+  escalationScript?: string | null;
+  /** @nullable */
+  voicemailScript?: string | null;
+  /** @nullable */
+  tone?: string | null;
+  intakeSchema?: IntakeSchema;
+  escalationRules?: EscalationRules;
+  /** @nullable */
+  enabled?: boolean | null;
+  /** @nullable */
+  isDefault?: boolean | null;
+  /** @nullable */
+  productMode?: string | null;
+}
+
+export interface UpdateReceptionistProfileBody {
+  name?: string;
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  voiceProvider?: string | null;
+  /** @nullable */
+  greetingScript?: string | null;
+  /** @nullable */
+  fallbackScript?: string | null;
+  /** @nullable */
+  escalationScript?: string | null;
+  /** @nullable */
+  voicemailScript?: string | null;
+  /** @nullable */
+  tone?: string | null;
+  intakeSchema?: IntakeSchema;
+  escalationRules?: EscalationRules;
+  /** @nullable */
+  enabled?: boolean | null;
+  /** @nullable */
+  isDefault?: boolean | null;
+}
+
+/**
+ * @nullable
+ */
+export type TransferTargetBusinessHours = { [key: string]: unknown } | null;
+
+export interface TransferTarget {
+  id: string;
+  userId: string;
+  name: string;
+  type: string;
+  /** @nullable */
+  phoneNumber?: string | null;
+  /** @nullable */
+  targetUserId?: string | null;
+  /** @nullable */
+  queueName?: string | null;
+  /** @nullable */
+  businessHours?: TransferTargetBusinessHours;
+  priority: number;
+  enabled: boolean;
+  /** @nullable */
+  productMode?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TransferTargetList = TransferTarget[];
+
+/**
+ * @nullable
+ */
+export type CreateTransferTargetBodyBusinessHours = {
+  [key: string]: unknown;
+} | null;
+
+export interface CreateTransferTargetBody {
+  name: string;
+  type: string;
+  /** @nullable */
+  phoneNumber?: string | null;
+  /** @nullable */
+  targetUserId?: string | null;
+  /** @nullable */
+  queueName?: string | null;
+  /** @nullable */
+  businessHours?: CreateTransferTargetBodyBusinessHours;
+  /** @nullable */
+  priority?: number | null;
+  /** @nullable */
+  enabled?: boolean | null;
+  /** @nullable */
+  productMode?: string | null;
+}
+
+/**
+ * @nullable
+ */
+export type UpdateTransferTargetBodyBusinessHours = {
+  [key: string]: unknown;
+} | null;
+
+export interface UpdateTransferTargetBody {
+  name?: string;
+  type?: string;
+  /** @nullable */
+  phoneNumber?: string | null;
+  /** @nullable */
+  targetUserId?: string | null;
+  /** @nullable */
+  queueName?: string | null;
+  /** @nullable */
+  businessHours?: UpdateTransferTargetBodyBusinessHours;
+  /** @nullable */
+  priority?: number | null;
+  /** @nullable */
+  enabled?: boolean | null;
+}
+
+export interface LiveSessionNote {
+  authorUserId: string;
+  body: string;
+  createdAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type LiveCallSessionCollectedData = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type LiveCallSessionCreatedObjectIds = { [key: string]: unknown } | null;
+
+export interface LiveCallSession {
+  id: string;
+  userId: string;
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  callRecordId?: string | null;
+  /** @nullable */
+  receptionistProfileId?: string | null;
+  /** @nullable */
+  provider?: string | null;
+  /** @nullable */
+  providerCallSid?: string | null;
+  /** @nullable */
+  callerPhone?: string | null;
+  /** @nullable */
+  calledNumber?: string | null;
+  sessionStatus: string;
+  /** @nullable */
+  currentStep?: string | null;
+  /** @nullable */
+  lastQuestionKey?: string | null;
+  askedFieldKeys?: string[];
+  /** @nullable */
+  collectedData?: LiveCallSessionCollectedData;
+  /** @nullable */
+  intent?: string | null;
+  /** @nullable */
+  priority?: string | null;
+  /** @nullable */
+  sentiment?: string | null;
+  /** @nullable */
+  transferTarget?: string | null;
+  /** @nullable */
+  escalationReason?: string | null;
+  /** @nullable */
+  transcriptLive?: string | null;
+  /** @nullable */
+  aiSummaryLive?: string | null;
+  notes?: LiveSessionNote[];
+  /** @nullable */
+  createdObjectIds?: LiveCallSessionCreatedObjectIds;
+  /** @nullable */
+  isDemo?: string | null;
+  startedAt: string;
+  /** @nullable */
+  endedAt?: string | null;
+  updatedAt: string;
+}
+
+export type LiveCallSessionList = LiveCallSession[];
+
+export interface TransferLiveSessionBody {
+  targetId: string;
+  /** @nullable */
+  reason?: string | null;
+}
+
+export interface AddLiveSessionNoteBody {
+  body: string;
+}
+
+export interface StartSimulatedLiveCallBody {
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  receptionistProfileId?: string | null;
+  /** @nullable */
+  callerPhone?: string | null;
+  /** @nullable */
+  customerName?: string | null;
+}
+
+export interface SimulatedLiveCallSayBody {
+  text: string;
+}
+
+/**
+ * @nullable
+ */
+export type SimulatedLiveCallTurnDecision = { [key: string]: unknown } | null;
+
+export interface SimulatedLiveCallTurn {
+  session: LiveCallSession;
+  /** @nullable */
+  decision?: SimulatedLiveCallTurnDecision;
+  /** @nullable */
+  transcriptDelta?: string | null;
 }
 
 export type ListCallsParams = {

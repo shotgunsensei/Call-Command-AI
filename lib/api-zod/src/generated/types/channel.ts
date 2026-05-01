@@ -36,6 +36,16 @@ export interface Channel {
   assignedFlowId?: string | null;
   /** @nullable */
   productMode?: string | null;
+  /** @nullable */
+  liveBehavior?: string | null;
+  /** @nullable */
+  receptionistProfileId?: string | null;
+  /** @nullable */
+  requireRecordingConsent?: boolean | null;
+  /** @nullable */
+  consentScript?: string | null;
+  /** @nullable */
+  consentRequiredBeforeRecording?: boolean | null;
   createdAt: Date;
   updatedAt: Date;
 }

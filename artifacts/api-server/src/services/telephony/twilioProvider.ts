@@ -13,6 +13,7 @@ import type {
   NormalizedRecording,
   NormalizedStatus,
   TelephonyProvider,
+  AiTwimlBuilders,
 } from "./types";
 
 function readStr(
@@ -46,7 +47,7 @@ function escapeXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-export const twilioProvider: TelephonyProvider = {
+export const twilioProvider: TelephonyProvider & AiTwimlBuilders = {
   id: "twilio",
 
   validateRequest(req: Request): boolean {
@@ -210,6 +211,103 @@ export const twilioProvider: TelephonyProvider = {
       );
       lines.push(`  <Hangup/>`);
     }
+    lines.push(`</Response>`);
+    return { contentType: "text/xml", body: lines.join("\n") };
+  },
+
+  buildGatherResponse({
+    sayText,
+    gatherActionUrl,
+    timeoutHangupText,
+    speechTimeout,
+  }) {
+    const lines: string[] = [];
+    lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    lines.push(`<Response>`);
+    const speechAttr = speechTimeout === undefined ? "auto" : String(speechTimeout);
+    // `actionOnEmptyResult` ensures Twilio still POSTs to /gather when the
+    // caller stays silent — we then count the silence as an empty turn and
+    // either re-prompt or hang up gracefully.
+    lines.push(
+      `  <Gather input="speech" speechTimeout="${escapeXml(speechAttr)}" action="${escapeXml(gatherActionUrl)}" method="POST" actionOnEmptyResult="true">`,
+    );
+    if (sayText) {
+      lines.push(`    <Say voice="Polly.Joanna">${escapeXml(sayText)}</Say>`);
+    }
+    lines.push(`  </Gather>`);
+    // Fallback if Gather closes without ever invoking action (very rare;
+    // Twilio almost always invokes thanks to actionOnEmptyResult).
+    lines.push(
+      `  <Say voice="Polly.Joanna">${escapeXml(timeoutHangupText ?? "I didn't catch that. Goodbye.")}</Say>`,
+    );
+    lines.push(`  <Hangup/>`);
+    lines.push(`</Response>`);
+    return { contentType: "text/xml", body: lines.join("\n") };
+  },
+
+  buildTransferDial({
+    sayText,
+    phoneNumber,
+    statusUrl,
+    recordingUrl,
+    recordCalls,
+    maxCallDurationSeconds,
+  }) {
+    const lines: string[] = [];
+    lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    lines.push(`<Response>`);
+    if (sayText) {
+      lines.push(`  <Say voice="Polly.Joanna">${escapeXml(sayText)}</Say>`);
+    }
+    const dialAttrs = [
+      `action="${escapeXml(statusUrl)}"`,
+      `method="POST"`,
+      maxCallDurationSeconds ? `timeLimit="${maxCallDurationSeconds}"` : "",
+      recordCalls ? `record="record-from-answer-dual"` : "",
+      recordCalls ? `recordingStatusCallback="${escapeXml(recordingUrl)}"` : "",
+      recordCalls ? `recordingStatusCallbackMethod="POST"` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    lines.push(`  <Dial ${dialAttrs}>${escapeXml(phoneNumber)}</Dial>`);
+    lines.push(`</Response>`);
+    return { contentType: "text/xml", body: lines.join("\n") };
+  },
+
+  buildVoicemailRecord({
+    sayText,
+    statusUrl,
+    recordingUrl,
+    maxLengthSeconds,
+  }) {
+    const lines: string[] = [];
+    lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    lines.push(`<Response>`);
+    if (sayText) {
+      lines.push(`  <Say voice="Polly.Joanna">${escapeXml(sayText)}</Say>`);
+    }
+    const recordAttrs = [
+      `action="${escapeXml(statusUrl)}"`,
+      `recordingStatusCallback="${escapeXml(recordingUrl)}"`,
+      `recordingStatusCallbackMethod="POST"`,
+      `transcribe="false"`,
+      `playBeep="true"`,
+      `finishOnKey="#"`,
+      `maxLength="${maxLengthSeconds ?? 300}"`,
+    ].join(" ");
+    lines.push(`  <Record ${recordAttrs}/>`);
+    lines.push(`</Response>`);
+    return { contentType: "text/xml", body: lines.join("\n") };
+  },
+
+  buildHangup({ sayText }) {
+    const lines: string[] = [];
+    lines.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    lines.push(`<Response>`);
+    if (sayText) {
+      lines.push(`  <Say voice="Polly.Joanna">${escapeXml(sayText)}</Say>`);
+    }
+    lines.push(`  <Hangup/>`);
     lines.push(`</Response>`);
     return { contentType: "text/xml", body: lines.join("\n") };
   },

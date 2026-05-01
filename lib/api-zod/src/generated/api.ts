@@ -889,6 +889,11 @@ export const GetSwitchboardResponse = zod.object({
         recordingConsentText: zod.string().nullish(),
         assignedFlowId: zod.string().nullish(),
         productMode: zod.string().nullish(),
+        liveBehavior: zod.string().nullish(),
+        receptionistProfileId: zod.string().nullish(),
+        requireRecordingConsent: zod.boolean().nullish(),
+        consentScript: zod.string().nullish(),
+        consentRequiredBeforeRecording: zod.boolean().nullish(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date(),
       }),
@@ -909,6 +914,35 @@ export const GetSwitchboardResponse = zod.object({
       ),
     }),
   ),
+  liveSessions: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        channelId: zod.string().nullish(),
+        callRecordId: zod.string().nullish(),
+        receptionistProfileId: zod.string().nullish(),
+        provider: zod.string().nullish(),
+        callerPhone: zod.string().nullish(),
+        calledNumber: zod.string().nullish(),
+        sessionStatus: zod.string(),
+        currentStep: zod.string().nullish(),
+        lastQuestionKey: zod.string().nullish(),
+        collectedData: zod.object({}).passthrough().nullish(),
+        intent: zod.string().nullish(),
+        priority: zod.string().nullish(),
+        sentiment: zod.string().nullish(),
+        transferTarget: zod.string().nullish(),
+        escalationReason: zod.string().nullish(),
+        transcriptLive: zod.string().nullish(),
+        aiSummaryLive: zod.string().nullish(),
+        notesCount: zod.number().optional(),
+        createdObjectIds: zod.object({}).passthrough().nullish(),
+        isDemo: zod.boolean(),
+        startedAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
 });
 
 export const ListProductModesResponseItem = zod.object({
@@ -1029,6 +1063,11 @@ export const ListChannelsResponseItem = zod.object({
   recordingConsentText: zod.string().nullish(),
   assignedFlowId: zod.string().nullish(),
   productMode: zod.string().nullish(),
+  liveBehavior: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  requireRecordingConsent: zod.boolean().nullish(),
+  consentScript: zod.string().nullish(),
+  consentRequiredBeforeRecording: zod.boolean().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1050,6 +1089,11 @@ export const CreateChannelBody = zod.object({
   recordingConsentText: zod.string().nullish(),
   assignedFlowId: zod.string().nullish(),
   productMode: zod.string().nullish(),
+  liveBehavior: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  requireRecordingConsent: zod.boolean().nullish(),
+  consentScript: zod.string().nullish(),
+  consentRequiredBeforeRecording: zod.boolean().nullish(),
 });
 
 export const UpdateChannelParams = zod.object({
@@ -1072,6 +1116,11 @@ export const UpdateChannelBody = zod.object({
   recordingConsentText: zod.string().nullish(),
   assignedFlowId: zod.string().nullish(),
   productMode: zod.string().nullish(),
+  liveBehavior: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  requireRecordingConsent: zod.boolean().nullish(),
+  consentScript: zod.string().nullish(),
+  consentRequiredBeforeRecording: zod.boolean().nullish(),
 });
 
 export const UpdateChannelResponse = zod.object({
@@ -1093,6 +1142,11 @@ export const UpdateChannelResponse = zod.object({
   recordingConsentText: zod.string().nullish(),
   assignedFlowId: zod.string().nullish(),
   productMode: zod.string().nullish(),
+  liveBehavior: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  requireRecordingConsent: zod.boolean().nullish(),
+  consentScript: zod.string().nullish(),
+  consentRequiredBeforeRecording: zod.boolean().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1246,6 +1300,630 @@ export const GetFlowLogsForCallResponseItem = zod.object({
 export const GetFlowLogsForCallResponse = zod.array(
   GetFlowLogsForCallResponseItem,
 );
+
+export const ListReceptionistProfilesResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  name: zod.string(),
+  voiceProvider: zod.string(),
+  greetingScript: zod.string(),
+  fallbackScript: zod.string().nullish(),
+  escalationScript: zod.string().nullish(),
+  voicemailScript: zod.string().nullish(),
+  tone: zod.string(),
+  intakeSchema: zod
+    .object({
+      fields: zod.array(
+        zod.object({
+          key: zod.string(),
+          label: zod.string(),
+          required: zod.boolean(),
+          allowedValues: zod.array(zod.string()).optional(),
+          prompt: zod.string().nullish(),
+        }),
+      ),
+    })
+    .optional(),
+  escalationRules: zod
+    .object({
+      emergencyKeywords: zod.array(zod.string()).optional(),
+      angrySentimentEscalates: zod.boolean().optional(),
+      vipNumbers: zod.array(zod.string()).optional(),
+      afterHoursEmergencyTransferTargetId: zod.string().nullish(),
+    })
+    .optional(),
+  enabled: zod.boolean(),
+  isDefault: zod.boolean(),
+  productMode: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListReceptionistProfilesResponse = zod.array(
+  ListReceptionistProfilesResponseItem,
+);
+
+export const CreateReceptionistProfileBody = zod.object({
+  name: zod.string(),
+  channelId: zod.string().nullish(),
+  voiceProvider: zod.string().nullish(),
+  greetingScript: zod.string(),
+  fallbackScript: zod.string().nullish(),
+  escalationScript: zod.string().nullish(),
+  voicemailScript: zod.string().nullish(),
+  tone: zod.string().nullish(),
+  intakeSchema: zod
+    .object({
+      fields: zod.array(
+        zod.object({
+          key: zod.string(),
+          label: zod.string(),
+          required: zod.boolean(),
+          allowedValues: zod.array(zod.string()).optional(),
+          prompt: zod.string().nullish(),
+        }),
+      ),
+    })
+    .optional(),
+  escalationRules: zod
+    .object({
+      emergencyKeywords: zod.array(zod.string()).optional(),
+      angrySentimentEscalates: zod.boolean().optional(),
+      vipNumbers: zod.array(zod.string()).optional(),
+      afterHoursEmergencyTransferTargetId: zod.string().nullish(),
+    })
+    .optional(),
+  enabled: zod.boolean().nullish(),
+  isDefault: zod.boolean().nullish(),
+  productMode: zod.string().nullish(),
+});
+
+export const GetReceptionistProfileParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetReceptionistProfileResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  name: zod.string(),
+  voiceProvider: zod.string(),
+  greetingScript: zod.string(),
+  fallbackScript: zod.string().nullish(),
+  escalationScript: zod.string().nullish(),
+  voicemailScript: zod.string().nullish(),
+  tone: zod.string(),
+  intakeSchema: zod
+    .object({
+      fields: zod.array(
+        zod.object({
+          key: zod.string(),
+          label: zod.string(),
+          required: zod.boolean(),
+          allowedValues: zod.array(zod.string()).optional(),
+          prompt: zod.string().nullish(),
+        }),
+      ),
+    })
+    .optional(),
+  escalationRules: zod
+    .object({
+      emergencyKeywords: zod.array(zod.string()).optional(),
+      angrySentimentEscalates: zod.boolean().optional(),
+      vipNumbers: zod.array(zod.string()).optional(),
+      afterHoursEmergencyTransferTargetId: zod.string().nullish(),
+    })
+    .optional(),
+  enabled: zod.boolean(),
+  isDefault: zod.boolean(),
+  productMode: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const UpdateReceptionistProfileParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateReceptionistProfileBody = zod.object({
+  name: zod.string().optional(),
+  channelId: zod.string().nullish(),
+  voiceProvider: zod.string().nullish(),
+  greetingScript: zod.string().nullish(),
+  fallbackScript: zod.string().nullish(),
+  escalationScript: zod.string().nullish(),
+  voicemailScript: zod.string().nullish(),
+  tone: zod.string().nullish(),
+  intakeSchema: zod
+    .object({
+      fields: zod.array(
+        zod.object({
+          key: zod.string(),
+          label: zod.string(),
+          required: zod.boolean(),
+          allowedValues: zod.array(zod.string()).optional(),
+          prompt: zod.string().nullish(),
+        }),
+      ),
+    })
+    .optional(),
+  escalationRules: zod
+    .object({
+      emergencyKeywords: zod.array(zod.string()).optional(),
+      angrySentimentEscalates: zod.boolean().optional(),
+      vipNumbers: zod.array(zod.string()).optional(),
+      afterHoursEmergencyTransferTargetId: zod.string().nullish(),
+    })
+    .optional(),
+  enabled: zod.boolean().nullish(),
+  isDefault: zod.boolean().nullish(),
+});
+
+export const UpdateReceptionistProfileResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  name: zod.string(),
+  voiceProvider: zod.string(),
+  greetingScript: zod.string(),
+  fallbackScript: zod.string().nullish(),
+  escalationScript: zod.string().nullish(),
+  voicemailScript: zod.string().nullish(),
+  tone: zod.string(),
+  intakeSchema: zod
+    .object({
+      fields: zod.array(
+        zod.object({
+          key: zod.string(),
+          label: zod.string(),
+          required: zod.boolean(),
+          allowedValues: zod.array(zod.string()).optional(),
+          prompt: zod.string().nullish(),
+        }),
+      ),
+    })
+    .optional(),
+  escalationRules: zod
+    .object({
+      emergencyKeywords: zod.array(zod.string()).optional(),
+      angrySentimentEscalates: zod.boolean().optional(),
+      vipNumbers: zod.array(zod.string()).optional(),
+      afterHoursEmergencyTransferTargetId: zod.string().nullish(),
+    })
+    .optional(),
+  enabled: zod.boolean(),
+  isDefault: zod.boolean(),
+  productMode: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const DeleteReceptionistProfileParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ListTransferTargetsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  type: zod.string(),
+  phoneNumber: zod.string().nullish(),
+  targetUserId: zod.string().nullish(),
+  queueName: zod.string().nullish(),
+  businessHours: zod.object({}).passthrough().nullish(),
+  priority: zod.number(),
+  enabled: zod.boolean(),
+  productMode: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListTransferTargetsResponse = zod.array(
+  ListTransferTargetsResponseItem,
+);
+
+export const CreateTransferTargetBody = zod.object({
+  name: zod.string(),
+  type: zod.string(),
+  phoneNumber: zod.string().nullish(),
+  targetUserId: zod.string().nullish(),
+  queueName: zod.string().nullish(),
+  businessHours: zod.object({}).passthrough().nullish(),
+  priority: zod.number().nullish(),
+  enabled: zod.boolean().nullish(),
+  productMode: zod.string().nullish(),
+});
+
+export const UpdateTransferTargetParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateTransferTargetBody = zod.object({
+  name: zod.string().optional(),
+  type: zod.string().optional(),
+  phoneNumber: zod.string().nullish(),
+  targetUserId: zod.string().nullish(),
+  queueName: zod.string().nullish(),
+  businessHours: zod.object({}).passthrough().nullish(),
+  priority: zod.number().nullish(),
+  enabled: zod.boolean().nullish(),
+});
+
+export const UpdateTransferTargetResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  type: zod.string(),
+  phoneNumber: zod.string().nullish(),
+  targetUserId: zod.string().nullish(),
+  queueName: zod.string().nullish(),
+  businessHours: zod.object({}).passthrough().nullish(),
+  priority: zod.number(),
+  enabled: zod.boolean(),
+  productMode: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const DeleteTransferTargetParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ListLiveSessionsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  callRecordId: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  sessionStatus: zod.string(),
+  currentStep: zod.string().nullish(),
+  lastQuestionKey: zod.string().nullish(),
+  askedFieldKeys: zod.array(zod.string()).optional(),
+  collectedData: zod.object({}).passthrough().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  transferTarget: zod.string().nullish(),
+  escalationReason: zod.string().nullish(),
+  transcriptLive: zod.string().nullish(),
+  aiSummaryLive: zod.string().nullish(),
+  notes: zod
+    .array(
+      zod.object({
+        authorUserId: zod.string(),
+        body: zod.string(),
+        createdAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  createdObjectIds: zod.object({}).passthrough().nullish(),
+  isDemo: zod.string().nullish(),
+  startedAt: zod.coerce.date(),
+  endedAt: zod.coerce.date().nullish(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListLiveSessionsResponse = zod.array(ListLiveSessionsResponseItem);
+
+export const GetLiveSessionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetLiveSessionResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  callRecordId: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  sessionStatus: zod.string(),
+  currentStep: zod.string().nullish(),
+  lastQuestionKey: zod.string().nullish(),
+  askedFieldKeys: zod.array(zod.string()).optional(),
+  collectedData: zod.object({}).passthrough().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  transferTarget: zod.string().nullish(),
+  escalationReason: zod.string().nullish(),
+  transcriptLive: zod.string().nullish(),
+  aiSummaryLive: zod.string().nullish(),
+  notes: zod
+    .array(
+      zod.object({
+        authorUserId: zod.string(),
+        body: zod.string(),
+        createdAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  createdObjectIds: zod.object({}).passthrough().nullish(),
+  isDemo: zod.string().nullish(),
+  startedAt: zod.coerce.date(),
+  endedAt: zod.coerce.date().nullish(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const MarkLiveSessionUrgentParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MarkLiveSessionUrgentResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  callRecordId: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  sessionStatus: zod.string(),
+  currentStep: zod.string().nullish(),
+  lastQuestionKey: zod.string().nullish(),
+  askedFieldKeys: zod.array(zod.string()).optional(),
+  collectedData: zod.object({}).passthrough().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  transferTarget: zod.string().nullish(),
+  escalationReason: zod.string().nullish(),
+  transcriptLive: zod.string().nullish(),
+  aiSummaryLive: zod.string().nullish(),
+  notes: zod
+    .array(
+      zod.object({
+        authorUserId: zod.string(),
+        body: zod.string(),
+        createdAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  createdObjectIds: zod.object({}).passthrough().nullish(),
+  isDemo: zod.string().nullish(),
+  startedAt: zod.coerce.date(),
+  endedAt: zod.coerce.date().nullish(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const TransferLiveSessionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const TransferLiveSessionBody = zod.object({
+  targetId: zod.string(),
+  reason: zod.string().nullish(),
+});
+
+export const TransferLiveSessionResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  callRecordId: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  sessionStatus: zod.string(),
+  currentStep: zod.string().nullish(),
+  lastQuestionKey: zod.string().nullish(),
+  askedFieldKeys: zod.array(zod.string()).optional(),
+  collectedData: zod.object({}).passthrough().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  transferTarget: zod.string().nullish(),
+  escalationReason: zod.string().nullish(),
+  transcriptLive: zod.string().nullish(),
+  aiSummaryLive: zod.string().nullish(),
+  notes: zod
+    .array(
+      zod.object({
+        authorUserId: zod.string(),
+        body: zod.string(),
+        createdAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  createdObjectIds: zod.object({}).passthrough().nullish(),
+  isDemo: zod.string().nullish(),
+  startedAt: zod.coerce.date(),
+  endedAt: zod.coerce.date().nullish(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const EndLiveSessionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const EndLiveSessionResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  callRecordId: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  sessionStatus: zod.string(),
+  currentStep: zod.string().nullish(),
+  lastQuestionKey: zod.string().nullish(),
+  askedFieldKeys: zod.array(zod.string()).optional(),
+  collectedData: zod.object({}).passthrough().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  transferTarget: zod.string().nullish(),
+  escalationReason: zod.string().nullish(),
+  transcriptLive: zod.string().nullish(),
+  aiSummaryLive: zod.string().nullish(),
+  notes: zod
+    .array(
+      zod.object({
+        authorUserId: zod.string(),
+        body: zod.string(),
+        createdAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  createdObjectIds: zod.object({}).passthrough().nullish(),
+  isDemo: zod.string().nullish(),
+  startedAt: zod.coerce.date(),
+  endedAt: zod.coerce.date().nullish(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const AddLiveSessionNoteParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const AddLiveSessionNoteBody = zod.object({
+  body: zod.string(),
+});
+
+export const AddLiveSessionNoteResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  callRecordId: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  sessionStatus: zod.string(),
+  currentStep: zod.string().nullish(),
+  lastQuestionKey: zod.string().nullish(),
+  askedFieldKeys: zod.array(zod.string()).optional(),
+  collectedData: zod.object({}).passthrough().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  transferTarget: zod.string().nullish(),
+  escalationReason: zod.string().nullish(),
+  transcriptLive: zod.string().nullish(),
+  aiSummaryLive: zod.string().nullish(),
+  notes: zod
+    .array(
+      zod.object({
+        authorUserId: zod.string(),
+        body: zod.string(),
+        createdAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  createdObjectIds: zod.object({}).passthrough().nullish(),
+  isDemo: zod.string().nullish(),
+  startedAt: zod.coerce.date(),
+  endedAt: zod.coerce.date().nullish(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const StartSimulatedLiveCallBody = zod.object({
+  channelId: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  customerName: zod.string().nullish(),
+});
+
+export const SimulateLiveCallSayParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const SimulateLiveCallSayBody = zod.object({
+  text: zod.string(),
+});
+
+export const SimulateLiveCallSayResponse = zod.object({
+  session: zod.object({
+    id: zod.string(),
+    userId: zod.string(),
+    channelId: zod.string().nullish(),
+    callRecordId: zod.string().nullish(),
+    receptionistProfileId: zod.string().nullish(),
+    provider: zod.string().nullish(),
+    providerCallSid: zod.string().nullish(),
+    callerPhone: zod.string().nullish(),
+    calledNumber: zod.string().nullish(),
+    sessionStatus: zod.string(),
+    currentStep: zod.string().nullish(),
+    lastQuestionKey: zod.string().nullish(),
+    askedFieldKeys: zod.array(zod.string()).optional(),
+    collectedData: zod.object({}).passthrough().nullish(),
+    intent: zod.string().nullish(),
+    priority: zod.string().nullish(),
+    sentiment: zod.string().nullish(),
+    transferTarget: zod.string().nullish(),
+    escalationReason: zod.string().nullish(),
+    transcriptLive: zod.string().nullish(),
+    aiSummaryLive: zod.string().nullish(),
+    notes: zod
+      .array(
+        zod.object({
+          authorUserId: zod.string(),
+          body: zod.string(),
+          createdAt: zod.coerce.date(),
+        }),
+      )
+      .optional(),
+    createdObjectIds: zod.object({}).passthrough().nullish(),
+    isDemo: zod.string().nullish(),
+    startedAt: zod.coerce.date(),
+    endedAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date(),
+  }),
+  decision: zod.object({}).passthrough().nullish(),
+  transcriptDelta: zod.string().nullish(),
+});
+
+export const EndSimulatedLiveCallParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const EndSimulatedLiveCallResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  channelId: zod.string().nullish(),
+  callRecordId: zod.string().nullish(),
+  receptionistProfileId: zod.string().nullish(),
+  provider: zod.string().nullish(),
+  providerCallSid: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  calledNumber: zod.string().nullish(),
+  sessionStatus: zod.string(),
+  currentStep: zod.string().nullish(),
+  lastQuestionKey: zod.string().nullish(),
+  askedFieldKeys: zod.array(zod.string()).optional(),
+  collectedData: zod.object({}).passthrough().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  transferTarget: zod.string().nullish(),
+  escalationReason: zod.string().nullish(),
+  transcriptLive: zod.string().nullish(),
+  aiSummaryLive: zod.string().nullish(),
+  notes: zod
+    .array(
+      zod.object({
+        authorUserId: zod.string(),
+        body: zod.string(),
+        createdAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  createdObjectIds: zod.object({}).passthrough().nullish(),
+  isDemo: zod.string().nullish(),
+  startedAt: zod.coerce.date(),
+  endedAt: zod.coerce.date().nullish(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Simulate an inbound call against a chosen channel and run the flow engine.

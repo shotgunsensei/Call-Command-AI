@@ -20,7 +20,10 @@ import {
   GitBranch,
   Sparkles,
   Tv,
-  Wand2
+  Wand2,
+  Bot,
+  ArrowRightLeft,
+  Headphones
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./ui/button";
@@ -43,9 +46,12 @@ const NAV_ITEMS = [
   { label: "Calls", href: "/calls", icon: Phone },
   { label: "New Call", href: "/calls/new", icon: UploadIcon },
   { label: "Channels", href: "/channels", icon: Radio },
+  { label: "Receptionists", href: "/receptionist-profiles", icon: Bot },
+  { label: "Transfer Targets", href: "/transfer-targets", icon: ArrowRightLeft },
   { label: "Telephony Setup", href: "/setup/telephony", icon: Wand2 },
   { label: "Flows", href: "/flows", icon: GitBranch },
   { label: "Simulator", href: "/simulate", icon: Sparkles },
+  { label: "Live-call Simulator", href: "/simulate/live-call", icon: Headphones },
   { label: "Tickets", href: "/tickets", icon: TicketIcon },
   { label: "Leads", href: "/leads", icon: UserPlus },
   { label: "Tasks", href: "/tasks", icon: ListTodo },

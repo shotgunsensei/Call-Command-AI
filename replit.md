@@ -10,7 +10,52 @@ Key capabilities include:
 - Supporting multi-line call orchestration with per-channel flow definitions and channel-aware TwiML.
 - Providing a dashboard for analytics and operational insights, plus a polled Switchboard view for live operations.
 
-# Phase 2 — Production telephony (current)
+# Phase 3 — Live AI Receptionist + Transfer Logic (current)
+
+Phase 3 builds the live, real-time voice layer on top of Phase 2:
+
+- **New tables.** `receptionist_profiles` (greeting / fallback /
+  escalation / voicemail scripts + intake schema + escalation rules),
+  `live_call_sessions` (per-call live state — current step, collected
+  data, transcript_live, ai_summary_live, internal notes, created
+  object ids, isDemo), `transfer_targets`, `transfer_logs`. Channels
+  gain `live_behavior`, `receptionist_profile_id`,
+  `require_recording_consent`, `consent_script`, and
+  `consent_required_before_recording`.
+- **Multi-turn Twilio Gather.** `POST /api/twilio/voice/incoming`
+  branches on `channel.live_behavior`. AI behaviors create a
+  `live_call_sessions` row and respond with `<Gather input="speech">`.
+  `POST /api/twilio/voice/gather` is signature-validated, idempotent
+  via `telephony_events.providerEventId`, runs the intake engine +
+  escalation evaluator + AI decision service, and returns the next
+  TwiML (next question / `<Dial>` to a transfer target / `<Record>`
+  voicemail / polite hang-up).
+- **Intake engine + escalation evaluator** (`lib/intakeEngine.ts`,
+  `lib/escalation.ts`) — pure functions, no I/O, fully unit-testable.
+- **AI decision service** (`services/liveReceptionist.ts`) — strict
+  JSON output via OpenAI `gpt-5.4` (`response_format: json_object`)
+  with zod validation; deterministic demo fallback when no key.
+  Server-side only — never throws into the webhook handler.
+- **CRUD APIs.** `/api/receptionist-profiles`, `/api/transfer-targets`,
+  `/api/live-sessions` with `mark-urgent`, `transfer`, `end`,
+  `add-note` actions. All scoped by `userId`.
+- **Switchboard extension.** `GET /api/switchboard` now returns a
+  `liveSessions[]` array. The UI polls every 4s and shows live AI
+  sessions on top with quick actions.
+- **Live-call simulator.** `POST /api/simulate/live-call/{start, :id/say,
+  :id/end}` for testing without real Twilio minutes. Sessions are
+  flagged `is_demo = "true"`.
+- **Product modes seed receptionist profiles + transfer targets** in
+  addition to channels/flows. Idempotent. Medical mode is strictly
+  administrative — no diagnosis. No automotive diagnostics.
+- **Recording-consent UX.** Channels can require a consent script
+  before greeting and gate recording on acknowledgement.
+- **Frontend.** New pages `/receptionist-profiles`,
+  `/transfer-targets`, `/simulate/live-call`. Channels page exposes a
+  "Live AI receptionist" accordion. Switchboard shows live sessions
+  with quick actions.
+
+# Phase 2 — Production telephony
 
 Phase 2 adds first-class inbound telephony on top of the Phase 1 foundation. Highlights:
 

@@ -21,6 +21,9 @@ import simulateRouter from "./simulate";
 import twilioRouter from "./twilio";
 import switchboardRouter from "./switchboard";
 import setupRouter from "./setup";
+import receptionistProfilesRouter from "./receptionistProfiles";
+import transferTargetsRouter from "./transferTargets";
+import liveSessionsRouter from "./liveSessions";
 
 const router: IRouter = Router();
 
@@ -46,5 +49,8 @@ router.use(simulateRouter);
 router.use(twilioRouter);
 router.use(switchboardRouter);
 router.use(setupRouter);
+router.use(receptionistProfilesRouter);
+router.use(transferTargetsRouter);
+router.use(liveSessionsRouter);
 
 export default router;

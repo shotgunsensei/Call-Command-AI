@@ -34,6 +34,19 @@ export type AfterHoursBehavior =
   | "ai_intake_placeholder"
   | "hangup";
 
+/**
+ * High-level live-call behavior for inbound provider calls. The Twilio
+ * incoming handler branches on this to decide whether to record-only,
+ * forward, take voicemail, or hand off to the AI receptionist.
+ */
+export type ChannelLiveBehavior =
+  | "record_only"
+  | "forward_only"
+  | "voicemail_only"
+  | "ai_receptionist"
+  | "ai_screen_then_transfer"
+  | "ai_after_hours_intake";
+
 export const channelsTable = pgTable(
   "channels",
   {
@@ -59,6 +72,19 @@ export const channelsTable = pgTable(
     recordingConsentText: text("recording_consent_text"),
     assignedFlowId: uuid("assigned_flow_id"),
     productMode: text("product_mode"),
+    // Phase 3 — live AI receptionist
+    liveBehavior: text("live_behavior")
+      .$type<ChannelLiveBehavior>()
+      .notNull()
+      .default("record_only"),
+    receptionistProfileId: uuid("receptionist_profile_id"),
+    requireRecordingConsent: boolean("require_recording_consent")
+      .notNull()
+      .default(false),
+    consentScript: text("consent_script"),
+    consentRequiredBeforeRecording: boolean("consent_required_before_recording")
+      .notNull()
+      .default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

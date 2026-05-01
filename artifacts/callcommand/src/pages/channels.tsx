@@ -5,6 +5,7 @@ import {
   useUpdateChannel,
   useDeleteChannel,
   useListFlows,
+  useListReceptionistProfiles,
   type CreateChannelBody,
 } from "@workspace/api-client-react";
 import {
@@ -69,6 +70,17 @@ const AFTER_HOURS_BEHAVIORS = [
   { value: "none", label: "No special handling" },
 ];
 
+const LIVE_BEHAVIORS = [
+  { value: "record_only", label: "Record-only (no live AI)" },
+  { value: "forward_only", label: "Forward without AI" },
+  { value: "voicemail_only", label: "Straight to voicemail" },
+  { value: "ai_receptionist", label: "AI receptionist (multi-turn intake)" },
+  { value: "ai_screen_then_transfer", label: "AI screen, then transfer" },
+  { value: "ai_after_hours_intake", label: "AI after-hours only" },
+];
+
+const NONE = "__none__";
+
 interface ChannelFormState {
   name: string;
   phoneNumber: string;
@@ -82,6 +94,11 @@ interface ChannelFormState {
   recordingConsentText: string;
   maxCallDurationSeconds: string;
   assignedFlowId: string;
+  liveBehavior: string;
+  receptionistProfileId: string;
+  requireRecordingConsent: boolean;
+  consentScript: string;
+  consentRequiredBeforeRecording: boolean;
 }
 
 const EMPTY_FORM: ChannelFormState = {
@@ -98,6 +115,12 @@ const EMPTY_FORM: ChannelFormState = {
     "This call may be recorded for quality and training purposes.",
   maxCallDurationSeconds: "",
   assignedFlowId: "",
+  liveBehavior: "record_only",
+  receptionistProfileId: "",
+  requireRecordingConsent: false,
+  consentScript:
+    "This call may be recorded and processed by an AI assistant. Press 1 or say yes to continue.",
+  consentRequiredBeforeRecording: false,
 };
 
 function formToBody(form: ChannelFormState): CreateChannelBody {
@@ -117,12 +140,18 @@ function formToBody(form: ChannelFormState): CreateChannelBody {
       : null,
     assignedFlowId: form.assignedFlowId || null,
     isActive: true,
+    liveBehavior: form.liveBehavior || null,
+    receptionistProfileId: form.receptionistProfileId || null,
+    requireRecordingConsent: form.requireRecordingConsent,
+    consentScript: form.consentScript.trim() || null,
+    consentRequiredBeforeRecording: form.consentRequiredBeforeRecording,
   };
 }
 
 export default function ChannelsPage() {
   const { data: channels, isLoading, refetch } = useListChannels();
   const { data: flows } = useListFlows();
+  const { data: receptionistProfiles } = useListReceptionistProfiles();
   const createChannel = useCreateChannel();
   const updateChannel = useUpdateChannel();
   const deleteChannel = useDeleteChannel();
@@ -160,6 +189,14 @@ export default function ChannelsPage() {
           ? String(ch.maxCallDurationSeconds)
           : "",
       assignedFlowId: ch.assignedFlowId ?? "",
+      liveBehavior: ch.liveBehavior ?? "record_only",
+      receptionistProfileId: ch.receptionistProfileId ?? "",
+      requireRecordingConsent: ch.requireRecordingConsent ?? false,
+      consentScript:
+        ch.consentScript ??
+        "This call may be recorded and processed by an AI assistant. Press 1 or say yes to continue.",
+      consentRequiredBeforeRecording:
+        ch.consentRequiredBeforeRecording ?? false,
     });
     setOpen(true);
   };
@@ -437,6 +474,118 @@ export default function ChannelsPage() {
                   </AccordionContent>
                 </AccordionItem>
 
+                <AccordionItem value="live">
+                  <AccordionTrigger className="text-sm">
+                    Live AI receptionist
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 pt-2">
+                    <div className="space-y-2">
+                      <Label>Live behavior</Label>
+                      <Select
+                        value={form.liveBehavior}
+                        onValueChange={(v) =>
+                          setForm({ ...form, liveBehavior: v })
+                        }
+                      >
+                        <SelectTrigger data-testid="select-live-behavior">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LIVE_BEHAVIORS.map((b) => (
+                            <SelectItem key={b.value} value={b.value}>
+                              {b.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Controls how Twilio voice webhooks branch the inbound
+                        call. AI behaviors run server-side intake then either
+                        transfer, take voicemail, or end politely.
+                      </p>
+                    </div>
+                    {(form.liveBehavior === "ai_receptionist" ||
+                      form.liveBehavior === "ai_screen_then_transfer" ||
+                      form.liveBehavior === "ai_after_hours_intake") && (
+                      <div className="space-y-2">
+                        <Label>Receptionist profile</Label>
+                        <Select
+                          value={form.receptionistProfileId || NONE}
+                          onValueChange={(v) =>
+                            setForm({
+                              ...form,
+                              receptionistProfileId: v === NONE ? "" : v,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Use workspace default" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>
+                              Use workspace default
+                            </SelectItem>
+                            {(receptionistProfiles ?? []).map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name}
+                                {p.isDefault ? " (default)" : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center justify-between rounded-md border border-border p-2">
+                        <Label className="text-sm cursor-pointer">
+                          Require recording consent
+                        </Label>
+                        <Switch
+                          checked={form.requireRecordingConsent}
+                          onCheckedChange={(v) =>
+                            setForm({ ...form, requireRecordingConsent: v })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-md border border-border p-2">
+                        <Label className="text-sm cursor-pointer">
+                          Block recording until consent
+                        </Label>
+                        <Switch
+                          checked={form.consentRequiredBeforeRecording}
+                          onCheckedChange={(v) =>
+                            setForm({
+                              ...form,
+                              consentRequiredBeforeRecording: v,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    {form.requireRecordingConsent && (
+                      <div className="space-y-2">
+                        <Label htmlFor="ch-consent-script">Consent script</Label>
+                        <Textarea
+                          id="ch-consent-script"
+                          rows={2}
+                          value={form.consentScript}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              consentScript: e.target.value,
+                            })
+                          }
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Played at the start of every call when AI/recording
+                          is enabled. You are responsible for compliance with
+                          local two-party consent law.
+                        </p>
+                      </div>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+
                 <AccordionItem value="routing">
                   <AccordionTrigger className="text-sm">
                     Routing & integrations
@@ -542,6 +691,19 @@ export default function ChannelsPage() {
                   {c.assignedFlowId ? (
                     <Badge variant="outline" className="text-[10px]">
                       flow bound
+                    </Badge>
+                  ) : null}
+                  {c.liveBehavior && c.liveBehavior !== "record_only" ? (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] border-primary/50 text-primary"
+                    >
+                      {c.liveBehavior.replace(/_/g, " ")}
+                    </Badge>
+                  ) : null}
+                  {c.receptionistProfileId ? (
+                    <Badge variant="outline" className="text-[10px]">
+                      AI bound
                     </Badge>
                   ) : null}
                 </div>

@@ -46,6 +46,54 @@ export interface ChannelTwiMLContext {
   channelMatched: boolean;
 }
 
+/**
+ * TwiML helpers used by the Phase 3 live-receptionist flow. These build
+ * single-purpose response bodies (gather / transfer / voicemail / hangup)
+ * the Twilio route handler chains together.
+ */
+export interface AiTwimlBuilders {
+  /**
+   * Build a `<Gather input="speech">` response that speaks `sayText` (or
+   * the greeting on first turn) and POSTs the transcribed reply to
+   * `gatherActionUrl`.
+   */
+  buildGatherResponse(args: {
+    sayText: string;
+    gatherActionUrl: string;
+    /** Spoken when the gather times out without speech. */
+    timeoutHangupText?: string;
+    /** Twilio default is 5s. Set ≥3 to give callers room to think. */
+    speechTimeout?: "auto" | number;
+  }): { contentType: string; body: string };
+
+  /**
+   * Bridge the caller to a transfer target. When the dial ends, Twilio
+   * will POST status to `statusUrl`. If `recordCalls` is true, recordings
+   * are POSTed to `recordingUrl`.
+   */
+  buildTransferDial(args: {
+    sayText?: string | null;
+    phoneNumber: string;
+    statusUrl: string;
+    recordingUrl: string;
+    recordCalls: boolean;
+    maxCallDurationSeconds: number | null;
+  }): { contentType: string; body: string };
+
+  /**
+   * Take a voicemail. Plays beep, records up to `maxLength` seconds, and
+   * POSTs the recording to `recordingUrl`.
+   */
+  buildVoicemailRecord(args: {
+    sayText: string;
+    statusUrl: string;
+    recordingUrl: string;
+    maxLengthSeconds?: number;
+  }): { contentType: string; body: string };
+
+  buildHangup(args: { sayText: string }): { contentType: string; body: string };
+}
+
 export interface TelephonyProvider {
   readonly id: "twilio" | "sip" | "asterisk" | "freepbx";
 

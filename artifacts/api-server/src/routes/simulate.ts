@@ -7,9 +7,12 @@ import {
 import {
   db,
   callRecordsTable,
+  liveCallSessionsTable,
+  receptionistProfilesTable,
   type CallRecord,
+  type LiveCallSession,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   executeFlowForCall,
@@ -21,6 +24,8 @@ import {
 } from "../services/rulesEngine";
 import { resolveChannelForIngestion } from "./channels";
 import { logger } from "../lib/logger";
+import { decideNextStep } from "../services/liveReceptionist";
+import { createObjectForSession } from "../services/liveReceptionistObjects";
 
 const router: IRouter = Router();
 
@@ -156,6 +161,328 @@ router.post(
         createdAt: l.createdAt.toISOString(),
       })),
     });
+  },
+);
+
+/**
+ * Live-call simulator. Lets the operator drive a fake AI receptionist
+ * conversation turn-by-turn from the UI without ever touching Twilio.
+ *
+ * - Every session is flagged `isDemo=true`. The switchboard hides demo
+ *   sessions from production summaries. Pipelines that touch real
+ *   inboxes (webhooks, slack) refuse to fire on demo records.
+ * - Re-uses `decideNextStep` and `createObjectForSession` so the demo
+ *   path is identical to the live Gather path — bug-for-bug parity is
+ *   the whole point of having a simulator.
+ */
+
+function serializeLiveSession(s: LiveCallSession): Record<string, unknown> {
+  return {
+    id: s.id,
+    channelId: s.channelId,
+    callRecordId: s.callRecordId,
+    receptionistProfileId: s.receptionistProfileId,
+    provider: s.provider,
+    callerPhone: s.callerPhone,
+    calledNumber: s.calledNumber,
+    sessionStatus: s.sessionStatus,
+    currentStep: s.currentStep,
+    lastQuestionKey: s.lastQuestionKey,
+    askedFieldKeys: s.askedFieldKeys,
+    collectedData: s.collectedData,
+    intent: s.intent,
+    priority: s.priority,
+    sentiment: s.sentiment,
+    transferTarget: s.transferTarget,
+    escalationReason: s.escalationReason,
+    transcriptLive: s.transcriptLive,
+    aiSummaryLive: s.aiSummaryLive,
+    notes: s.notes,
+    createdObjectIds: s.createdObjectIds,
+    isDemo: s.isDemo === "true",
+    startedAt: s.startedAt.toISOString(),
+    endedAt: s.endedAt ? s.endedAt.toISOString() : null,
+    updatedAt: s.updatedAt.toISOString(),
+  };
+}
+
+router.post(
+  "/simulate/live-call/start",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.userId!;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const callerPhone =
+      typeof body["callerPhone"] === "string" ? body["callerPhone"] : null;
+    const calledNumber =
+      typeof body["calledNumber"] === "string" ? body["calledNumber"] : null;
+    const requestedProfileId =
+      typeof body["receptionistProfileId"] === "string"
+        ? body["receptionistProfileId"]
+        : null;
+
+    // Pick a profile: explicit > workspace default > first enabled.
+    let profile = null;
+    if (requestedProfileId) {
+      const [p] = await db
+        .select()
+        .from(receptionistProfilesTable)
+        .where(
+          and(
+            eq(receptionistProfilesTable.id, requestedProfileId),
+            eq(receptionistProfilesTable.userId, userId),
+          ),
+        )
+        .limit(1);
+      profile = p ?? null;
+    }
+    if (!profile) {
+      const [p] = await db
+        .select()
+        .from(receptionistProfilesTable)
+        .where(
+          and(
+            eq(receptionistProfilesTable.userId, userId),
+            eq(receptionistProfilesTable.isDefault, true),
+            eq(receptionistProfilesTable.enabled, true),
+          ),
+        )
+        .limit(1);
+      profile = p ?? null;
+    }
+    if (!profile) {
+      const [p] = await db
+        .select()
+        .from(receptionistProfilesTable)
+        .where(
+          and(
+            eq(receptionistProfilesTable.userId, userId),
+            eq(receptionistProfilesTable.enabled, true),
+          ),
+        )
+        .limit(1);
+      profile = p ?? null;
+    }
+    if (!profile) {
+      res
+        .status(400)
+        .json({
+          error:
+            "No enabled receptionist profile. Create one (or apply a product mode) before simulating.",
+        });
+      return;
+    }
+
+    const channel = await resolveChannelForIngestion({
+      userId,
+      phoneNumber: calledNumber,
+      preferredChannelId: null,
+    });
+
+    // Companion call_record so the session can hang ticket/lead/task off
+    // a real link. Marked isDemo so dashboards filter it out.
+    const [call] = await db
+      .insert(callRecordsTable)
+      .values({
+        userId,
+        channelId: channel.id,
+        originalFilename: `live-sim-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`,
+        status: "incoming",
+        callerPhone,
+        calledNumber,
+        callDirection: "inbound",
+        provider: "twilio",
+        keyPoints: [],
+        suggestedTags: [],
+        isDemo: "true",
+      })
+      .returning();
+
+    const [session] = await db
+      .insert(liveCallSessionsTable)
+      .values({
+        userId,
+        channelId: channel.id,
+        callRecordId: call!.id,
+        receptionistProfileId: profile.id,
+        provider: "twilio",
+        callerPhone,
+        calledNumber,
+        sessionStatus: "collecting_intake",
+        currentStep: "greeting",
+        transcriptLive: `AI: ${profile.greetingScript}\n`,
+        isDemo: "true",
+      })
+      .returning();
+
+    res.status(201).json({
+      session: serializeLiveSession(session!),
+      profile: {
+        id: profile.id,
+        name: profile.name,
+        greetingScript: profile.greetingScript,
+        intakeSchema: profile.intakeSchema,
+      },
+    });
+  },
+);
+
+router.post(
+  "/simulate/live-call/:id/say",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.userId!;
+    const id = String(req.params.id);
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const speech = typeof body["text"] === "string" ? body["text"].trim() : "";
+    if (!speech) {
+      res.status(400).json({ error: "text is required" });
+      return;
+    }
+
+    const [session] = await db
+      .select()
+      .from(liveCallSessionsTable)
+      .where(
+        and(
+          eq(liveCallSessionsTable.id, id),
+          eq(liveCallSessionsTable.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!session) {
+      res.status(404).json({ error: "Live session not found" });
+      return;
+    }
+    if (
+      session.sessionStatus === "completed" ||
+      session.sessionStatus === "failed"
+    ) {
+      res.status(409).json({ error: "Session already ended" });
+      return;
+    }
+
+    const [profile] = session.receptionistProfileId
+      ? await db
+          .select()
+          .from(receptionistProfilesTable)
+          .where(
+            eq(receptionistProfilesTable.id, session.receptionistProfileId),
+          )
+          .limit(1)
+      : [];
+    if (!profile) {
+      res.status(409).json({ error: "Receptionist profile missing" });
+      return;
+    }
+
+    const transcriptWithCaller = `${session.transcriptLive ?? ""}Caller: ${speech}\n`;
+    const decision = await decideNextStep({
+      profile,
+      channel: null,
+      collectedData: session.collectedData ?? {},
+      lastQuestionKey: session.lastQuestionKey,
+      transcript: transcriptWithCaller,
+      latestSpeech: speech,
+      callerPhone: session.callerPhone,
+    });
+
+    const mergedCollected = {
+      ...(session.collectedData ?? {}),
+      ...(decision.collectedDataUpdates ?? {}),
+    };
+    const transcriptWithAi = `${transcriptWithCaller}AI: ${decision.publicResponse}\n`;
+    const isTerminal =
+      decision.recommendedAction === "end_call" ||
+      decision.recommendedAction === "create_ticket" ||
+      decision.recommendedAction === "create_lead" ||
+      decision.recommendedAction === "create_task" ||
+      decision.recommendedAction === "voicemail";
+
+    const [updated] = await db
+      .update(liveCallSessionsTable)
+      .set({
+        collectedData: mergedCollected,
+        transcriptLive: transcriptWithAi,
+        aiSummaryLive: decision.reason || session.aiSummaryLive,
+        intent: decision.intent || session.intent,
+        priority: decision.priority,
+        sentiment: decision.sentiment,
+        currentStep: decision.recommendedAction,
+        lastQuestionKey:
+          decision.recommendedAction === "ask_next"
+            ? decision.nextQuestion ?? session.lastQuestionKey
+            : null,
+        sessionStatus: isTerminal
+          ? decision.recommendedAction === "voicemail"
+            ? "voicemail"
+            : "completed"
+          : "collecting_intake",
+        endedAt: isTerminal ? new Date() : null,
+      })
+      .where(eq(liveCallSessionsTable.id, session.id))
+      .returning();
+
+    let createdObject: { kind: string; id: string } | null = null;
+    if (
+      decision.recommendedAction === "create_ticket" ||
+      decision.recommendedAction === "create_lead" ||
+      decision.recommendedAction === "create_task"
+    ) {
+      createdObject = await createObjectForSession({
+        session: updated!,
+        decision,
+      });
+    }
+
+    res.json({
+      session: serializeLiveSession(updated!),
+      decision: {
+        intent: decision.intent,
+        priority: decision.priority,
+        sentiment: decision.sentiment,
+        recommendedAction: decision.recommendedAction,
+        reason: decision.reason,
+        publicResponse: decision.publicResponse,
+        internalNote: decision.internalNote,
+        transferTarget: decision.transferTarget,
+        nextQuestion: decision.nextQuestion,
+      },
+      createdObject,
+    });
+  },
+);
+
+router.post(
+  "/simulate/live-call/:id/end",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.userId!;
+    const id = String(req.params.id);
+    const [session] = await db
+      .select()
+      .from(liveCallSessionsTable)
+      .where(
+        and(
+          eq(liveCallSessionsTable.id, id),
+          eq(liveCallSessionsTable.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!session) {
+      res.status(404).json({ error: "Live session not found" });
+      return;
+    }
+    const [updated] = await db
+      .update(liveCallSessionsTable)
+      .set({
+        sessionStatus: "completed",
+        endedAt: new Date(),
+        currentStep: "ended",
+      })
+      .where(eq(liveCallSessionsTable.id, session.id))
+      .returning();
+    res.json({ session: serializeLiveSession(updated!) });
   },
 );
 

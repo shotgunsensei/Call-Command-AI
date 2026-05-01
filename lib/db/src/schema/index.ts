@@ -14,3 +14,7 @@ export * from "./callFlows";
 export * from "./flowNodes";
 export * from "./flowLogs";
 export * from "./telephonyEvents";
+export * from "./receptionistProfiles";
+export * from "./liveCallSessions";
+export * from "./transferTargets";
+export * from "./transferLogs";

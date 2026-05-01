@@ -5,9 +5,157 @@ transcribe them, classify intent / priority / sentiment, run
 tenant-defined call flows, and trigger downstream automation
 (tickets, leads, tasks, webhooks).
 
-This README covers **Phase 2 — Production Telephony**. For the
-underlying call-flow orchestration, automation rules, and AI pipeline
-introduced in Phase 1, see the in-app docs and `replit.md`.
+This README covers **Phase 2 — Production Telephony** and the
+**Phase 3 — Live AI Receptionist + Transfer Logic** layer on top of
+it. For the underlying call-flow orchestration, automation rules, and
+AI pipeline introduced in Phase 1, see the in-app docs and
+`replit.md`.
+
+---
+
+## Phase 3 — Live AI Receptionist (current)
+
+Phase 3 turns the system from a recorder-and-analyzer into a real-time
+voice agent that answers, screens, intakes, and transfers calls.
+
+### Live behaviors (per channel)
+
+`channels.live_behavior` controls how Twilio webhooks branch:
+
+| Value | What it does |
+| --- | --- |
+| `record_only` | Phase 2 behavior — greet, record, transcribe afterward. |
+| `forward_only` | Forward straight to `forward_number`, no AI. |
+| `voicemail_only` | Skip the human, take a voicemail immediately. |
+| `ai_receptionist` | Multi-turn intake with the AI receptionist. |
+| `ai_screen_then_transfer` | AI collects context, then dials a transfer target. |
+| `ai_after_hours_intake` | AI engages only outside business hours. |
+
+### Multi-turn `<Gather>` flow
+
+`POST /api/twilio/voice/incoming` decides whether to start a live
+session and respond with a `<Gather input="speech">` greeting.
+
+`POST /api/twilio/voice/gather` is hit on every caller turn:
+
+1. Validate the Twilio signature (same path used by the recording
+   webhook).
+2. De-duplicate via `telephony_events.providerEventId` so retried
+   webhooks are no-ops.
+3. Look up the `live_call_sessions` row by `provider_call_sid` and
+   append the `SpeechResult` to `transcript_live`.
+4. Run the **intake engine** (`lib/intakeEngine.ts`) to extract any
+   missing field from the latest utterance and pick the next question.
+5. Run the **escalation evaluator** (`lib/escalation.ts`) to detect
+   emergency keywords, angry sentiment, or VIP callers.
+6. Call the **AI decision service** (`services/liveReceptionist.ts`)
+   for the reply, recommended action, and any business-object
+   creation. The service uses OpenAI (`gpt-5.4`,
+   `response_format: json_object`) when `AI_INTEGRATIONS_OPENAI_*` env
+   vars are present, otherwise falls back to a deterministic demo
+   responder. Bad JSON is swallowed — the service never throws into
+   the webhook.
+7. Persist the session and return the next TwiML: another question, a
+   `<Dial>` to the chosen transfer target, a `<Record>` voicemail, or
+   a polite hang-up.
+
+### Intake schema
+
+Each receptionist profile owns an `intake_schema` jsonb of the form
+
+```json
+{ "fields": [
+  { "key": "name",   "label": "Caller name",       "required": true },
+  { "key": "phone",  "label": "Callback number",   "required": true },
+  { "key": "reason", "label": "Reason for calling","required": true }
+]}
+```
+
+Edit profiles at `/receptionist-profiles`. The receptionist asks each
+missing required field one at a time, then either transfers, takes
+voicemail, or ends the call based on the AI decision.
+
+### Transfer targets
+
+`/transfer-targets` manages where the AI may hand off live calls:
+
+* `external_number` (E.164) — `<Dial>` straight to a phone number.
+* `voicemail` — fall through to the channel's voicemail.
+* `user` / `queue` — placeholders for upcoming releases.
+
+Operators can also transfer manually from the live switchboard using
+the same target list.
+
+### Escalation rules
+
+Each receptionist profile owns `escalation_rules` jsonb:
+
+* `emergencyKeywords` — comma-separated trigger phrases.
+* `vipNumbers` — E.164 callers who escalate immediately.
+* `angrySentimentEscalates` — escalate if AI tags the call angry/upset.
+* `afterHoursEmergencyTransferTargetId` — optional after-hours fallback.
+
+When triggered, the session is marked `escalated`, the
+`escalation_reason` is recorded, and the next webhook turn responds
+with the profile's escalation script + `<Dial>` to the configured
+target (or voicemail if none).
+
+### Voicemail callback
+
+When a `<Record>` voicemail recording arrives at
+`/api/twilio/voice/recording`, the existing Phase 2 pipeline runs
+end-to-end. If a `live_call_sessions` row exists for that CallSid,
+its `session_status` becomes `voicemail` and a follow-up task / ticket
+is created using the AI's recommended action (de-duplicated via
+`session.created_object_ids`).
+
+### Live switchboard
+
+`/switchboard` now polls every **4s** and shows live AI sessions on
+top with quick actions: **Mark urgent**, **Transfer**, **Add note**,
+**End**, plus a **Detail** link to the underlying call record. Each
+card surfaces the current step, collected fields, recent transcript,
+escalation reason, and AI summary.
+
+### Live-call simulator
+
+`/simulate/live-call` lets you have a multi-turn conversation with the
+receptionist without burning Twilio minutes. Sessions are flagged
+`is_demo = "true"` so they never enter production analytics.
+
+### Recording-consent UX
+
+Per channel:
+
+* `require_recording_consent` — play the consent script before the
+  greeting.
+* `consent_script` — the line played to the caller.
+* `consent_required_before_recording` — when true, no audio is captured
+  until consent is acknowledged. **You are responsible for compliance
+  with local two-party consent law.**
+
+### Product modes (Phase 3 additions)
+
+Each product mode (MSP, Sales, Field Service, Medical, General) now
+seeds default receptionist profiles + transfer targets in addition to
+channels and flows. Seeding is idempotent — apply the same mode twice
+and only missing resources are created.
+
+> **Medical mode is administrative only.** It collects appointment /
+> callback intake. The receptionist never gives medical advice, never
+> diagnoses, and never triages clinical urgency beyond "is this an
+> emergency? if yes, hang up and call 911."
+
+> **Automotive use** is supported for scheduling / quoting only. The
+> receptionist never diagnoses vehicle problems.
+
+### Server-side AI keys only
+
+The decision service runs **only on the API server**. The frontend
+never sees an AI key. If `AI_INTEGRATIONS_OPENAI_API_KEY` and
+`AI_INTEGRATIONS_OPENAI_BASE_URL` are missing, the service uses a
+deterministic demo responder so the entire flow still works on a
+fresh Replit clone.
 
 ---
 

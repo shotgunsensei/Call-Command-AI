@@ -18,6 +18,7 @@ import type {
 
 import type {
   ActionItem,
+  AddLiveSessionNoteBody,
   ApplyProductModeBody,
   ApplyProductModeResponse,
   AutomationRule,
@@ -36,6 +37,8 @@ import type {
   CreateChannelBody,
   CreateCheckoutBody,
   CreateIntegrationBody,
+  CreateReceptionistProfileBody,
+  CreateTransferTargetBody,
   DashboardStats,
   Error,
   FlowExecutionResult,
@@ -51,8 +54,12 @@ import type {
   LeadList,
   ListCallsParams,
   ListTelephonyEventsParams,
+  LiveCallSession,
+  LiveCallSessionList,
   Me,
   ProductModeList,
+  ReceptionistProfile,
+  ReceptionistProfileList,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   RuleExecutionResult,
@@ -60,12 +67,18 @@ import type {
   SendWebhookBody,
   SetupState,
   SimulateCallBody,
+  SimulatedLiveCallSayBody,
+  SimulatedLiveCallTurn,
+  StartSimulatedLiveCallBody,
   SwitchboardResponse,
   Task,
   TaskList,
   TelephonyEventList,
   Ticket,
   TicketList,
+  TransferLiveSessionBody,
+  TransferTarget,
+  TransferTargetList,
   TwilioStatus,
   UpdateActionItemBody,
   UpdateAutomationRuleBody,
@@ -73,8 +86,10 @@ import type {
   UpdateChannelBody,
   UpdateIntegrationBody,
   UpdateLeadBody,
+  UpdateReceptionistProfileBody,
   UpdateTaskBody,
   UpdateTicketBody,
+  UpdateTransferTargetBody,
   WebhookResult,
 } from "./api.schemas";
 
@@ -4537,6 +4552,1416 @@ export function useGetFlowLogsForCall<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const getListReceptionistProfilesUrl = () => {
+  return `/api/receptionist-profiles`;
+};
+
+export const listReceptionistProfiles = async (
+  options?: RequestInit,
+): Promise<ReceptionistProfileList> => {
+  return customFetch<ReceptionistProfileList>(
+    getListReceptionistProfilesUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListReceptionistProfilesQueryKey = () => {
+  return [`/api/receptionist-profiles`] as const;
+};
+
+export const getListReceptionistProfilesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReceptionistProfiles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listReceptionistProfiles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListReceptionistProfilesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listReceptionistProfiles>>
+  > = ({ signal }) => listReceptionistProfiles({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReceptionistProfiles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReceptionistProfilesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReceptionistProfiles>>
+>;
+export type ListReceptionistProfilesQueryError = ErrorType<unknown>;
+
+export function useListReceptionistProfiles<
+  TData = Awaited<ReturnType<typeof listReceptionistProfiles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listReceptionistProfiles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReceptionistProfilesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateReceptionistProfileUrl = () => {
+  return `/api/receptionist-profiles`;
+};
+
+export const createReceptionistProfile = async (
+  createReceptionistProfileBody: CreateReceptionistProfileBody,
+  options?: RequestInit,
+): Promise<ReceptionistProfile> => {
+  return customFetch<ReceptionistProfile>(getCreateReceptionistProfileUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createReceptionistProfileBody),
+  });
+};
+
+export const getCreateReceptionistProfileMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReceptionistProfile>>,
+    TError,
+    { data: BodyType<CreateReceptionistProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createReceptionistProfile>>,
+  TError,
+  { data: BodyType<CreateReceptionistProfileBody> },
+  TContext
+> => {
+  const mutationKey = ["createReceptionistProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createReceptionistProfile>>,
+    { data: BodyType<CreateReceptionistProfileBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createReceptionistProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateReceptionistProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createReceptionistProfile>>
+>;
+export type CreateReceptionistProfileMutationBody =
+  BodyType<CreateReceptionistProfileBody>;
+export type CreateReceptionistProfileMutationError = ErrorType<unknown>;
+
+export const useCreateReceptionistProfile = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReceptionistProfile>>,
+    TError,
+    { data: BodyType<CreateReceptionistProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createReceptionistProfile>>,
+  TError,
+  { data: BodyType<CreateReceptionistProfileBody> },
+  TContext
+> => {
+  return useMutation(getCreateReceptionistProfileMutationOptions(options));
+};
+
+export const getGetReceptionistProfileUrl = (id: string) => {
+  return `/api/receptionist-profiles/${id}`;
+};
+
+export const getReceptionistProfile = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ReceptionistProfile> => {
+  return customFetch<ReceptionistProfile>(getGetReceptionistProfileUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetReceptionistProfileQueryKey = (id: string) => {
+  return [`/api/receptionist-profiles/${id}`] as const;
+};
+
+export const getGetReceptionistProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReceptionistProfile>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReceptionistProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetReceptionistProfileQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getReceptionistProfile>>
+  > = ({ signal }) => getReceptionistProfile(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReceptionistProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReceptionistProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReceptionistProfile>>
+>;
+export type GetReceptionistProfileQueryError = ErrorType<unknown>;
+
+export function useGetReceptionistProfile<
+  TData = Awaited<ReturnType<typeof getReceptionistProfile>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReceptionistProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReceptionistProfileQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUpdateReceptionistProfileUrl = (id: string) => {
+  return `/api/receptionist-profiles/${id}`;
+};
+
+export const updateReceptionistProfile = async (
+  id: string,
+  updateReceptionistProfileBody: UpdateReceptionistProfileBody,
+  options?: RequestInit,
+): Promise<ReceptionistProfile> => {
+  return customFetch<ReceptionistProfile>(getUpdateReceptionistProfileUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateReceptionistProfileBody),
+  });
+};
+
+export const getUpdateReceptionistProfileMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReceptionistProfile>>,
+    TError,
+    { id: string; data: BodyType<UpdateReceptionistProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateReceptionistProfile>>,
+  TError,
+  { id: string; data: BodyType<UpdateReceptionistProfileBody> },
+  TContext
+> => {
+  const mutationKey = ["updateReceptionistProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateReceptionistProfile>>,
+    { id: string; data: BodyType<UpdateReceptionistProfileBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateReceptionistProfile(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateReceptionistProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateReceptionistProfile>>
+>;
+export type UpdateReceptionistProfileMutationBody =
+  BodyType<UpdateReceptionistProfileBody>;
+export type UpdateReceptionistProfileMutationError = ErrorType<unknown>;
+
+export const useUpdateReceptionistProfile = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReceptionistProfile>>,
+    TError,
+    { id: string; data: BodyType<UpdateReceptionistProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateReceptionistProfile>>,
+  TError,
+  { id: string; data: BodyType<UpdateReceptionistProfileBody> },
+  TContext
+> => {
+  return useMutation(getUpdateReceptionistProfileMutationOptions(options));
+};
+
+export const getDeleteReceptionistProfileUrl = (id: string) => {
+  return `/api/receptionist-profiles/${id}`;
+};
+
+export const deleteReceptionistProfile = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteReceptionistProfileUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteReceptionistProfileMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReceptionistProfile>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteReceptionistProfile>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteReceptionistProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteReceptionistProfile>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteReceptionistProfile(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteReceptionistProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteReceptionistProfile>>
+>;
+
+export type DeleteReceptionistProfileMutationError = ErrorType<unknown>;
+
+export const useDeleteReceptionistProfile = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReceptionistProfile>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteReceptionistProfile>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteReceptionistProfileMutationOptions(options));
+};
+
+export const getListTransferTargetsUrl = () => {
+  return `/api/transfer-targets`;
+};
+
+export const listTransferTargets = async (
+  options?: RequestInit,
+): Promise<TransferTargetList> => {
+  return customFetch<TransferTargetList>(getListTransferTargetsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListTransferTargetsQueryKey = () => {
+  return [`/api/transfer-targets`] as const;
+};
+
+export const getListTransferTargetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTransferTargets>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listTransferTargets>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListTransferTargetsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listTransferTargets>>
+  > = ({ signal }) => listTransferTargets({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTransferTargets>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTransferTargetsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTransferTargets>>
+>;
+export type ListTransferTargetsQueryError = ErrorType<unknown>;
+
+export function useListTransferTargets<
+  TData = Awaited<ReturnType<typeof listTransferTargets>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listTransferTargets>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTransferTargetsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateTransferTargetUrl = () => {
+  return `/api/transfer-targets`;
+};
+
+export const createTransferTarget = async (
+  createTransferTargetBody: CreateTransferTargetBody,
+  options?: RequestInit,
+): Promise<TransferTarget> => {
+  return customFetch<TransferTarget>(getCreateTransferTargetUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createTransferTargetBody),
+  });
+};
+
+export const getCreateTransferTargetMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTransferTarget>>,
+    TError,
+    { data: BodyType<CreateTransferTargetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createTransferTarget>>,
+  TError,
+  { data: BodyType<CreateTransferTargetBody> },
+  TContext
+> => {
+  const mutationKey = ["createTransferTarget"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createTransferTarget>>,
+    { data: BodyType<CreateTransferTargetBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createTransferTarget(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateTransferTargetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createTransferTarget>>
+>;
+export type CreateTransferTargetMutationBody =
+  BodyType<CreateTransferTargetBody>;
+export type CreateTransferTargetMutationError = ErrorType<unknown>;
+
+export const useCreateTransferTarget = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTransferTarget>>,
+    TError,
+    { data: BodyType<CreateTransferTargetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createTransferTarget>>,
+  TError,
+  { data: BodyType<CreateTransferTargetBody> },
+  TContext
+> => {
+  return useMutation(getCreateTransferTargetMutationOptions(options));
+};
+
+export const getUpdateTransferTargetUrl = (id: string) => {
+  return `/api/transfer-targets/${id}`;
+};
+
+export const updateTransferTarget = async (
+  id: string,
+  updateTransferTargetBody: UpdateTransferTargetBody,
+  options?: RequestInit,
+): Promise<TransferTarget> => {
+  return customFetch<TransferTarget>(getUpdateTransferTargetUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateTransferTargetBody),
+  });
+};
+
+export const getUpdateTransferTargetMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTransferTarget>>,
+    TError,
+    { id: string; data: BodyType<UpdateTransferTargetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateTransferTarget>>,
+  TError,
+  { id: string; data: BodyType<UpdateTransferTargetBody> },
+  TContext
+> => {
+  const mutationKey = ["updateTransferTarget"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateTransferTarget>>,
+    { id: string; data: BodyType<UpdateTransferTargetBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateTransferTarget(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateTransferTargetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateTransferTarget>>
+>;
+export type UpdateTransferTargetMutationBody =
+  BodyType<UpdateTransferTargetBody>;
+export type UpdateTransferTargetMutationError = ErrorType<unknown>;
+
+export const useUpdateTransferTarget = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTransferTarget>>,
+    TError,
+    { id: string; data: BodyType<UpdateTransferTargetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateTransferTarget>>,
+  TError,
+  { id: string; data: BodyType<UpdateTransferTargetBody> },
+  TContext
+> => {
+  return useMutation(getUpdateTransferTargetMutationOptions(options));
+};
+
+export const getDeleteTransferTargetUrl = (id: string) => {
+  return `/api/transfer-targets/${id}`;
+};
+
+export const deleteTransferTarget = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteTransferTargetUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteTransferTargetMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTransferTarget>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteTransferTarget>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteTransferTarget"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteTransferTarget>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteTransferTarget(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteTransferTargetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteTransferTarget>>
+>;
+
+export type DeleteTransferTargetMutationError = ErrorType<unknown>;
+
+export const useDeleteTransferTarget = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTransferTarget>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteTransferTarget>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteTransferTargetMutationOptions(options));
+};
+
+export const getListLiveSessionsUrl = () => {
+  return `/api/live-sessions`;
+};
+
+export const listLiveSessions = async (
+  options?: RequestInit,
+): Promise<LiveCallSessionList> => {
+  return customFetch<LiveCallSessionList>(getListLiveSessionsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListLiveSessionsQueryKey = () => {
+  return [`/api/live-sessions`] as const;
+};
+
+export const getListLiveSessionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLiveSessions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listLiveSessions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListLiveSessionsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listLiveSessions>>
+  > = ({ signal }) => listLiveSessions({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLiveSessions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLiveSessionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLiveSessions>>
+>;
+export type ListLiveSessionsQueryError = ErrorType<unknown>;
+
+export function useListLiveSessions<
+  TData = Awaited<ReturnType<typeof listLiveSessions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listLiveSessions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLiveSessionsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetLiveSessionUrl = (id: string) => {
+  return `/api/live-sessions/${id}`;
+};
+
+export const getLiveSession = async (
+  id: string,
+  options?: RequestInit,
+): Promise<LiveCallSession> => {
+  return customFetch<LiveCallSession>(getGetLiveSessionUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLiveSessionQueryKey = (id: string) => {
+  return [`/api/live-sessions/${id}`] as const;
+};
+
+export const getGetLiveSessionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLiveSession>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLiveSession>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLiveSessionQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveSession>>> = ({
+    signal,
+  }) => getLiveSession(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLiveSession>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLiveSessionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLiveSession>>
+>;
+export type GetLiveSessionQueryError = ErrorType<unknown>;
+
+export function useGetLiveSession<
+  TData = Awaited<ReturnType<typeof getLiveSession>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLiveSession>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLiveSessionQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getMarkLiveSessionUrgentUrl = (id: string) => {
+  return `/api/live-sessions/${id}/mark-urgent`;
+};
+
+export const markLiveSessionUrgent = async (
+  id: string,
+  options?: RequestInit,
+): Promise<LiveCallSession> => {
+  return customFetch<LiveCallSession>(getMarkLiveSessionUrgentUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getMarkLiveSessionUrgentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markLiveSessionUrgent>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markLiveSessionUrgent>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["markLiveSessionUrgent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markLiveSessionUrgent>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return markLiveSessionUrgent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkLiveSessionUrgentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markLiveSessionUrgent>>
+>;
+
+export type MarkLiveSessionUrgentMutationError = ErrorType<unknown>;
+
+export const useMarkLiveSessionUrgent = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markLiveSessionUrgent>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markLiveSessionUrgent>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getMarkLiveSessionUrgentMutationOptions(options));
+};
+
+export const getTransferLiveSessionUrl = (id: string) => {
+  return `/api/live-sessions/${id}/transfer`;
+};
+
+export const transferLiveSession = async (
+  id: string,
+  transferLiveSessionBody: TransferLiveSessionBody,
+  options?: RequestInit,
+): Promise<LiveCallSession> => {
+  return customFetch<LiveCallSession>(getTransferLiveSessionUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(transferLiveSessionBody),
+  });
+};
+
+export const getTransferLiveSessionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transferLiveSession>>,
+    TError,
+    { id: string; data: BodyType<TransferLiveSessionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof transferLiveSession>>,
+  TError,
+  { id: string; data: BodyType<TransferLiveSessionBody> },
+  TContext
+> => {
+  const mutationKey = ["transferLiveSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof transferLiveSession>>,
+    { id: string; data: BodyType<TransferLiveSessionBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return transferLiveSession(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TransferLiveSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof transferLiveSession>>
+>;
+export type TransferLiveSessionMutationBody = BodyType<TransferLiveSessionBody>;
+export type TransferLiveSessionMutationError = ErrorType<unknown>;
+
+export const useTransferLiveSession = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transferLiveSession>>,
+    TError,
+    { id: string; data: BodyType<TransferLiveSessionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof transferLiveSession>>,
+  TError,
+  { id: string; data: BodyType<TransferLiveSessionBody> },
+  TContext
+> => {
+  return useMutation(getTransferLiveSessionMutationOptions(options));
+};
+
+export const getEndLiveSessionUrl = (id: string) => {
+  return `/api/live-sessions/${id}/end`;
+};
+
+export const endLiveSession = async (
+  id: string,
+  options?: RequestInit,
+): Promise<LiveCallSession> => {
+  return customFetch<LiveCallSession>(getEndLiveSessionUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getEndLiveSessionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endLiveSession>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof endLiveSession>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["endLiveSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof endLiveSession>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return endLiveSession(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EndLiveSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof endLiveSession>>
+>;
+
+export type EndLiveSessionMutationError = ErrorType<unknown>;
+
+export const useEndLiveSession = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endLiveSession>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof endLiveSession>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getEndLiveSessionMutationOptions(options));
+};
+
+export const getAddLiveSessionNoteUrl = (id: string) => {
+  return `/api/live-sessions/${id}/add-note`;
+};
+
+export const addLiveSessionNote = async (
+  id: string,
+  addLiveSessionNoteBody: AddLiveSessionNoteBody,
+  options?: RequestInit,
+): Promise<LiveCallSession> => {
+  return customFetch<LiveCallSession>(getAddLiveSessionNoteUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(addLiveSessionNoteBody),
+  });
+};
+
+export const getAddLiveSessionNoteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addLiveSessionNote>>,
+    TError,
+    { id: string; data: BodyType<AddLiveSessionNoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addLiveSessionNote>>,
+  TError,
+  { id: string; data: BodyType<AddLiveSessionNoteBody> },
+  TContext
+> => {
+  const mutationKey = ["addLiveSessionNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addLiveSessionNote>>,
+    { id: string; data: BodyType<AddLiveSessionNoteBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return addLiveSessionNote(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddLiveSessionNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addLiveSessionNote>>
+>;
+export type AddLiveSessionNoteMutationBody = BodyType<AddLiveSessionNoteBody>;
+export type AddLiveSessionNoteMutationError = ErrorType<unknown>;
+
+export const useAddLiveSessionNote = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addLiveSessionNote>>,
+    TError,
+    { id: string; data: BodyType<AddLiveSessionNoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addLiveSessionNote>>,
+  TError,
+  { id: string; data: BodyType<AddLiveSessionNoteBody> },
+  TContext
+> => {
+  return useMutation(getAddLiveSessionNoteMutationOptions(options));
+};
+
+export const getStartSimulatedLiveCallUrl = () => {
+  return `/api/simulate/live-call/start`;
+};
+
+export const startSimulatedLiveCall = async (
+  startSimulatedLiveCallBody: StartSimulatedLiveCallBody,
+  options?: RequestInit,
+): Promise<LiveCallSession> => {
+  return customFetch<LiveCallSession>(getStartSimulatedLiveCallUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(startSimulatedLiveCallBody),
+  });
+};
+
+export const getStartSimulatedLiveCallMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startSimulatedLiveCall>>,
+    TError,
+    { data: BodyType<StartSimulatedLiveCallBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startSimulatedLiveCall>>,
+  TError,
+  { data: BodyType<StartSimulatedLiveCallBody> },
+  TContext
+> => {
+  const mutationKey = ["startSimulatedLiveCall"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startSimulatedLiveCall>>,
+    { data: BodyType<StartSimulatedLiveCallBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return startSimulatedLiveCall(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartSimulatedLiveCallMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startSimulatedLiveCall>>
+>;
+export type StartSimulatedLiveCallMutationBody =
+  BodyType<StartSimulatedLiveCallBody>;
+export type StartSimulatedLiveCallMutationError = ErrorType<unknown>;
+
+export const useStartSimulatedLiveCall = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startSimulatedLiveCall>>,
+    TError,
+    { data: BodyType<StartSimulatedLiveCallBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startSimulatedLiveCall>>,
+  TError,
+  { data: BodyType<StartSimulatedLiveCallBody> },
+  TContext
+> => {
+  return useMutation(getStartSimulatedLiveCallMutationOptions(options));
+};
+
+export const getSimulateLiveCallSayUrl = (id: string) => {
+  return `/api/simulate/live-call/${id}/say`;
+};
+
+export const simulateLiveCallSay = async (
+  id: string,
+  simulatedLiveCallSayBody: SimulatedLiveCallSayBody,
+  options?: RequestInit,
+): Promise<SimulatedLiveCallTurn> => {
+  return customFetch<SimulatedLiveCallTurn>(getSimulateLiveCallSayUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(simulatedLiveCallSayBody),
+  });
+};
+
+export const getSimulateLiveCallSayMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulateLiveCallSay>>,
+    TError,
+    { id: string; data: BodyType<SimulatedLiveCallSayBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof simulateLiveCallSay>>,
+  TError,
+  { id: string; data: BodyType<SimulatedLiveCallSayBody> },
+  TContext
+> => {
+  const mutationKey = ["simulateLiveCallSay"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof simulateLiveCallSay>>,
+    { id: string; data: BodyType<SimulatedLiveCallSayBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return simulateLiveCallSay(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SimulateLiveCallSayMutationResult = NonNullable<
+  Awaited<ReturnType<typeof simulateLiveCallSay>>
+>;
+export type SimulateLiveCallSayMutationBody =
+  BodyType<SimulatedLiveCallSayBody>;
+export type SimulateLiveCallSayMutationError = ErrorType<unknown>;
+
+export const useSimulateLiveCallSay = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulateLiveCallSay>>,
+    TError,
+    { id: string; data: BodyType<SimulatedLiveCallSayBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof simulateLiveCallSay>>,
+  TError,
+  { id: string; data: BodyType<SimulatedLiveCallSayBody> },
+  TContext
+> => {
+  return useMutation(getSimulateLiveCallSayMutationOptions(options));
+};
+
+export const getEndSimulatedLiveCallUrl = (id: string) => {
+  return `/api/simulate/live-call/${id}/end`;
+};
+
+export const endSimulatedLiveCall = async (
+  id: string,
+  options?: RequestInit,
+): Promise<LiveCallSession> => {
+  return customFetch<LiveCallSession>(getEndSimulatedLiveCallUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getEndSimulatedLiveCallMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endSimulatedLiveCall>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof endSimulatedLiveCall>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["endSimulatedLiveCall"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof endSimulatedLiveCall>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return endSimulatedLiveCall(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EndSimulatedLiveCallMutationResult = NonNullable<
+  Awaited<ReturnType<typeof endSimulatedLiveCall>>
+>;
+
+export type EndSimulatedLiveCallMutationError = ErrorType<unknown>;
+
+export const useEndSimulatedLiveCall = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endSimulatedLiveCall>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof endSimulatedLiveCall>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getEndSimulatedLiveCallMutationOptions(options));
+};
 
 /**
  * @summary Simulate an inbound call against a chosen channel and run the flow engine.
