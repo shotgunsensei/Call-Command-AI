@@ -5,7 +5,7 @@ import {
   actionItemsTable,
   type CallRecord,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { processCallAudio, streamToBuffer } from "./aiAnalysis";
 import {
   ensureDefaultRules,
@@ -80,8 +80,10 @@ export async function runCallPipeline(args: {
         customerName: processed.analysis.customerName,
         companyName: processed.analysis.companyName,
         // Don't clobber a known caller phone (e.g. Twilio "From") with the
-        // analysis's best-guess. Only fill if currently null.
-        callerPhone: processed.analysis.callerPhone,
+        // analysis's best-guess. The provider's `From` is the source of
+        // truth — only fill in via analysis if no phone was set yet.
+        // COALESCE keeps any existing value and only fills when null.
+        callerPhone: sql`COALESCE(${callRecordsTable.callerPhone}, ${processed.analysis.callerPhone ?? null})`,
         callType: processed.analysis.callType,
         intent: processed.analysis.intent,
         priority: processed.analysis.priority,
@@ -120,10 +122,9 @@ export async function runCallPipeline(args: {
     }
   });
 
-  // Re-fix callerPhone if analysis returned null and the caller phone was
-  // previously set (e.g. Twilio populated it from `From`). The transaction
-  // above unconditionally overwrites — patch back here.
-  await preserveCallerPhone(userId, callId);
+  // Caller phone is preserved at the SQL layer via COALESCE above — no
+  // post-pass needed. Provider-supplied callerPhone (e.g. Twilio `From`)
+  // is never overwritten by the analysis service's best-guess.
 
   // Step 5 — run automation rules.
   try {
@@ -188,28 +189,3 @@ async function loadCall(
   return row ?? null;
 }
 
-async function preserveCallerPhone(
-  userId: string,
-  callId: string,
-): Promise<void> {
-  // No-op shim: deliberately separated so a future caller-phone preservation
-  // strategy (compare against an originally-recorded value) can be plugged
-  // in without changing the main pipeline. For now Twilio routes set
-  // callerPhone before the pipeline starts; processCallAudio's null result
-  // would clobber it. Re-set if the analysis returned null.
-  try {
-    const [row] = await db
-      .select({ callerPhone: callRecordsTable.callerPhone })
-      .from(callRecordsTable)
-      .where(
-        and(
-          eq(callRecordsTable.id, callId),
-          eq(callRecordsTable.userId, userId),
-        ),
-      )
-      .limit(1);
-    void row;
-  } catch {
-    /* ignore */
-  }
-}

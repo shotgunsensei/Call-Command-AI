@@ -4,12 +4,34 @@ import {
   type Request,
   type Response,
 } from "express";
-import { db, channelsTable, type Channel } from "@workspace/db";
-import { and, asc, eq } from "drizzle-orm";
+import {
+  db,
+  channelsTable,
+  receptionistProfilesTable,
+  type Channel,
+  type ChannelLiveBehavior,
+} from "@workspace/db";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { normalizeE164 } from "../lib/phoneNumbers";
 
 const router: IRouter = Router();
+
+const VALID_LIVE_BEHAVIORS: ReadonlyArray<ChannelLiveBehavior> = [
+  "record_only",
+  "forward_only",
+  "voicemail_only",
+  "ai_receptionist",
+  "ai_screen_then_transfer",
+  "ai_after_hours_intake",
+];
+
+const VALID_AFTER_HOURS = [
+  "voicemail",
+  "forward",
+  "ai_intake_placeholder",
+  "hangup",
+] as const;
 
 function serialize(c: Channel) {
   return {
@@ -17,6 +39,48 @@ function serialize(c: Channel) {
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   };
+}
+
+/**
+ * Confirm `profileId` (if non-null) belongs to `userId`. Used to prevent
+ * one workspace from binding a channel to another workspace's profile.
+ */
+async function profileBelongsToUser(
+  userId: string,
+  profileId: string | null,
+): Promise<boolean> {
+  if (!profileId) return true;
+  const [r] = await db
+    .select({ id: receptionistProfilesTable.id })
+    .from(receptionistProfilesTable)
+    .where(
+      and(
+        eq(receptionistProfilesTable.id, profileId),
+        eq(receptionistProfilesTable.userId, userId),
+      ),
+    )
+    .limit(1);
+  return Boolean(r);
+}
+
+/**
+ * Global phone-number uniqueness guard. A Twilio number can only route
+ * to one workspace at a time, so two channels owning the same E.164 is
+ * always a configuration mistake. Enforced at the application layer
+ * (rather than as a DB unique constraint) so legacy duplicate rows can
+ * still be edited and resolved manually.
+ */
+async function phoneNumberIsAvailable(args: {
+  phoneE164: string | null;
+  excludeChannelId?: string | null;
+}): Promise<boolean> {
+  if (!args.phoneE164) return true;
+  const all = await db.select().from(channelsTable);
+  return !all.some(
+    (c) =>
+      (args.excludeChannelId ? c.id !== args.excludeChannelId : true) &&
+      normalizeE164(c.phoneNumber) === args.phoneE164,
+  );
 }
 
 /**
@@ -131,16 +195,55 @@ router.post(
       res.status(400).json({ error: "name is required" });
       return;
     }
+
+    const phoneE164 =
+      typeof body.phoneNumber === "string"
+        ? normalizeE164(body.phoneNumber) ?? body.phoneNumber
+        : null;
+    if (
+      phoneE164 &&
+      !(await phoneNumberIsAvailable({ phoneE164 }))
+    ) {
+      res
+        .status(409)
+        .json({ error: `phoneNumber ${phoneE164} is already used by another channel` });
+      return;
+    }
+
+    let liveBehavior: ChannelLiveBehavior = "record_only";
+    if ("liveBehavior" in body) {
+      if (
+        typeof body.liveBehavior === "string" &&
+        VALID_LIVE_BEHAVIORS.includes(body.liveBehavior as ChannelLiveBehavior)
+      ) {
+        liveBehavior = body.liveBehavior as ChannelLiveBehavior;
+      } else if (body.liveBehavior != null) {
+        res.status(400).json({
+          error: `liveBehavior must be one of: ${VALID_LIVE_BEHAVIORS.join(", ")}`,
+        });
+        return;
+      }
+    }
+
+    let receptionistProfileId: string | null = null;
+    if (typeof body.receptionistProfileId === "string" && body.receptionistProfileId) {
+      const ok = await profileBelongsToUser(userId, body.receptionistProfileId);
+      if (!ok) {
+        res.status(400).json({
+          error: "receptionistProfileId does not belong to this workspace",
+        });
+        return;
+      }
+      receptionistProfileId = body.receptionistProfileId;
+    }
+
     const [created] = await db
       .insert(channelsTable)
       .values({
         userId,
         name: name.slice(0, 200),
         type: typeof body.type === "string" ? body.type : "webhook",
-        phoneNumber:
-          typeof body.phoneNumber === "string"
-            ? normalizeE164(body.phoneNumber) ?? body.phoneNumber
-            : null,
+        phoneNumber: phoneE164,
         defaultRoute:
           typeof body.defaultRoute === "string" ? body.defaultRoute : null,
         isActive: body.isActive === false ? false : true,
@@ -153,18 +256,12 @@ router.post(
           typeof body.allowVoicemail === "boolean" ? body.allowVoicemail : true,
         businessHours:
           body.businessHours && typeof body.businessHours === "object"
-            ? (body.businessHours as Record<string, unknown>)
+            ? (body.businessHours as Channel["businessHours"])
             : null,
         afterHoursBehavior:
           typeof body.afterHoursBehavior === "string" &&
-          ["voicemail", "forward", "ai_intake_placeholder", "hangup"].includes(
-            body.afterHoursBehavior,
-          )
-            ? (body.afterHoursBehavior as
-                | "voicemail"
-                | "forward"
-                | "ai_intake_placeholder"
-                | "hangup")
+          (VALID_AFTER_HOURS as readonly string[]).includes(body.afterHoursBehavior)
+            ? (body.afterHoursBehavior as Channel["afterHoursBehavior"])
             : "voicemail",
         forwardNumber:
           typeof body.forwardNumber === "string"
@@ -182,6 +279,18 @@ router.post(
           typeof body.assignedFlowId === "string" ? body.assignedFlowId : null,
         productMode:
           typeof body.productMode === "string" ? body.productMode : null,
+        liveBehavior,
+        receptionistProfileId,
+        requireRecordingConsent:
+          typeof body.requireRecordingConsent === "boolean"
+            ? body.requireRecordingConsent
+            : false,
+        consentScript:
+          typeof body.consentScript === "string" ? body.consentScript : null,
+        consentRequiredBeforeRecording:
+          typeof body.consentRequiredBeforeRecording === "boolean"
+            ? body.consentRequiredBeforeRecording
+            : false,
       })
       .returning();
     res.status(201).json(serialize(created!));
@@ -199,10 +308,23 @@ router.patch(
     if (typeof body.name === "string") patch.name = body.name.slice(0, 200);
     if (typeof body.type === "string") patch.type = body.type;
     if ("phoneNumber" in body) {
-      patch.phoneNumber =
+      const next =
         typeof body.phoneNumber === "string"
           ? normalizeE164(body.phoneNumber) ?? body.phoneNumber
           : null;
+      if (
+        next &&
+        !(await phoneNumberIsAvailable({
+          phoneE164: next,
+          excludeChannelId: id,
+        }))
+      ) {
+        res.status(409).json({
+          error: `phoneNumber ${next} is already used by another channel`,
+        });
+        return;
+      }
+      patch.phoneNumber = next;
     }
     if ("defaultRoute" in body)
       patch.defaultRoute =
@@ -223,15 +345,15 @@ router.patch(
     }
     if (
       typeof body.afterHoursBehavior === "string" &&
-      ["voicemail", "forward", "ai_intake_placeholder", "hangup"].includes(
-        body.afterHoursBehavior,
-      )
+      (VALID_AFTER_HOURS as readonly string[]).includes(body.afterHoursBehavior)
     ) {
-      patch.afterHoursBehavior = body.afterHoursBehavior as
-        | "voicemail"
-        | "forward"
-        | "ai_intake_placeholder"
-        | "hangup";
+      patch.afterHoursBehavior =
+        body.afterHoursBehavior as Channel["afterHoursBehavior"];
+    } else if (body.afterHoursBehavior != null && typeof body.afterHoursBehavior === "string") {
+      res.status(400).json({
+        error: `afterHoursBehavior must be one of: ${VALID_AFTER_HOURS.join(", ")}`,
+      });
+      return;
     }
     if ("forwardNumber" in body)
       patch.forwardNumber =
@@ -254,6 +376,44 @@ router.patch(
     if ("productMode" in body)
       patch.productMode =
         typeof body.productMode === "string" ? body.productMode : null;
+
+    // Phase 3 fields — Live AI receptionist + consent.
+    if ("liveBehavior" in body) {
+      if (body.liveBehavior == null) {
+        patch.liveBehavior = "record_only";
+      } else if (
+        typeof body.liveBehavior === "string" &&
+        VALID_LIVE_BEHAVIORS.includes(body.liveBehavior as ChannelLiveBehavior)
+      ) {
+        patch.liveBehavior = body.liveBehavior as ChannelLiveBehavior;
+      } else {
+        res.status(400).json({
+          error: `liveBehavior must be one of: ${VALID_LIVE_BEHAVIORS.join(", ")}`,
+        });
+        return;
+      }
+    }
+    if ("receptionistProfileId" in body) {
+      if (body.receptionistProfileId == null || body.receptionistProfileId === "") {
+        patch.receptionistProfileId = null;
+      } else if (typeof body.receptionistProfileId === "string") {
+        const ok = await profileBelongsToUser(userId, body.receptionistProfileId);
+        if (!ok) {
+          res.status(400).json({
+            error: "receptionistProfileId does not belong to this workspace",
+          });
+          return;
+        }
+        patch.receptionistProfileId = body.receptionistProfileId;
+      }
+    }
+    if (typeof body.requireRecordingConsent === "boolean")
+      patch.requireRecordingConsent = body.requireRecordingConsent;
+    if ("consentScript" in body)
+      patch.consentScript =
+        typeof body.consentScript === "string" ? body.consentScript : null;
+    if (typeof body.consentRequiredBeforeRecording === "boolean")
+      patch.consentRequiredBeforeRecording = body.consentRequiredBeforeRecording;
 
     const [updated] = await db
       .update(channelsTable)
@@ -291,11 +451,13 @@ router.delete(
     }
     await db
       .delete(channelsTable)
-      .where(
-        and(eq(channelsTable.id, id), eq(channelsTable.userId, userId)),
-      );
+      .where(and(eq(channelsTable.id, id), eq(channelsTable.userId, userId)));
     res.status(204).send();
   },
 );
+
+// Suppress unused-import warning — `ne` is kept available for future
+// scoped uniqueness checks (e.g. per-user, excluding the row being patched).
+void ne;
 
 export default router;

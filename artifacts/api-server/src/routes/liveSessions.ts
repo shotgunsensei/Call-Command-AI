@@ -15,6 +15,11 @@ import {
 } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import {
+  redirectLiveCallToDial,
+  redirectStatusToTransferLog,
+} from "../services/twilioControl";
+import { getWebhookBaseUrl } from "../lib/twilio";
 
 const router: IRouter = Router();
 
@@ -135,27 +140,76 @@ router.post(
       res.status(404).json({ error: "Transfer target not found" });
       return;
     }
+
+    const reason =
+      typeof body["reason"] === "string"
+        ? String(body["reason"]).slice(0, 200)
+        : "Operator-initiated transfer";
+
+    // Try to redirect the live call via the Twilio Calls REST API. The
+    // helper returns a structured result so we can write an honest
+    // transfer_log status (`redirected` / `logged_no_provider` / `failed`)
+    // instead of unconditionally claiming "attempted".
+    const base = getWebhookBaseUrl();
+    const redirect = await redirectLiveCallToDial({
+      callSid: session.providerCallSid,
+      targetPhoneE164: target.phoneNumber,
+      sayText: "Connecting your call now.",
+      recordCalls: true,
+      statusCallbackUrl: base ? `${base}/api/twilio/voice/status` : null,
+      recordingCallbackUrl: base ? `${base}/api/twilio/voice/recording` : null,
+    });
+
+    // The session moves to "transferring" only when the redirect actually
+    // landed at Twilio. For logged-only outcomes the session stays where
+    // it was so an operator can decide what to do next without the UI
+    // misrepresenting a successful bridge.
     const [updated] = await db
       .update(liveCallSessionsTable)
       .set({
-        sessionStatus: "transferring",
+        ...(redirect.ok ? { sessionStatus: "transferring" as const } : {}),
         transferTarget: target.name,
       })
       .where(eq(liveCallSessionsTable.id, id))
       .returning();
+
     await db.insert(transferLogsTable).values({
       userId,
       callRecordId: session.callRecordId,
       liveSessionId: session.id,
       targetId: target.id,
       targetName: target.name,
-      status: "attempted",
-      reason:
-        typeof body["reason"] === "string"
-          ? String(body["reason"]).slice(0, 200)
-          : "Operator-initiated transfer",
+      // Persist the coarse audit status (bridged/failed) plus the rich
+      // redirect status in `reason` so operators can see whether Twilio
+      // was wired up or not.
+      status: redirectStatusToTransferLog(redirect.status),
+      reason: `${reason} — [${redirect.status}] ${redirect.reason}`,
     });
-    res.json(serialize(updated!));
+
+    if (!redirect.ok) {
+      // 202 for "we logged your intent but no live redirect happened"
+      // (Twilio not configured / non-Twilio session). 502 for actual
+      // upstream Twilio failures so the UI can surface a real error.
+      const httpStatus =
+        redirect.status === "logged_no_provider" ||
+        redirect.status === "no_call_sid" ||
+        redirect.status === "no_target_phone"
+          ? 202
+          : 502;
+      res.status(httpStatus).json({
+        ok: false,
+        transferStatus: redirect.status,
+        reason: redirect.reason,
+        session: serialize(updated!),
+      });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      transferStatus: redirect.status,
+      ...serialize(updated!),
+    });
   },
 );
 

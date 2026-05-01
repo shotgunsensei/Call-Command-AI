@@ -32,6 +32,17 @@ import { runCallPipeline } from "../services/callPipeline";
 import { decideNextStep } from "../services/liveReceptionist";
 import { createObjectForSession } from "../services/liveReceptionistObjects";
 import { buildQuestionFor, evaluateIntake } from "../lib/intakeEngine";
+import { isWithinBusinessHours } from "../lib/businessHours";
+import type { NormalizedIncoming } from "../services/telephony/types";
+
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
 
 const router: IRouter = Router();
 
@@ -240,6 +251,310 @@ function isAiBehavior(channel: Channel): boolean {
   );
 }
 
+/**
+ * DTMF Gather for recording-consent confirmation. Caller presses 1 to
+ * accept, 2 to decline. Action posts to /api/twilio/voice/consent which
+ * re-enters `executeIncomingFlow` with `consentVerified=true` on accept,
+ * or hangs up with an explanation on decline.
+ */
+function sendConsentGather(res: Response, channel: Channel): void {
+  const consentText =
+    channel.consentScript ??
+    channel.recordingConsentText ??
+    "This call may be recorded for quality and training purposes. Press 1 to consent and continue, or press 2 to decline.";
+  const consentUrl = `${getWebhookBaseUrl() ?? ""}/api/twilio/voice/consent`;
+  const body = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<Response>`,
+    `  <Gather input="dtmf" numDigits="1" timeout="10" action="${escapeXml(consentUrl)}" method="POST" actionOnEmptyResult="true">`,
+    `    <Say voice="Polly.Joanna">${escapeXml(consentText)}</Say>`,
+    `  </Gather>`,
+    `  <Say voice="Polly.Joanna">No response received. We cannot proceed without recording consent. Goodbye.</Say>`,
+    `  <Hangup/>`,
+    `</Response>`,
+  ].join("\n");
+  sendTwiml(res, body);
+}
+
+/**
+ * Standard non-AI flow — record / forward / voicemail per channel
+ * configuration. Identical to the original Phase 2 behavior; extracted
+ * so the after-hours and consent paths can re-use it.
+ */
+function runStandardFlow(channel: Channel | null, res: Response): void {
+  const ctx = buildContext(channel);
+  const out = twilioProvider.generateIncomingResponse(
+    ctx,
+    buildCallbackUrls(),
+  );
+  sendTwiml(res, out.body);
+}
+
+/**
+ * After-hours dispatcher. Honors `channel.afterHoursBehavior` and
+ * `channel.allowVoicemail` strictly — we never silently leave a caller
+ * recording when voicemail is disabled, and we always log which branch
+ * we took to telephony_events for operator post-mortems.
+ */
+async function runAfterHoursBranch(args: {
+  parsed: NormalizedIncoming;
+  channel: Channel;
+  callId: string;
+  res: Response;
+}): Promise<void> {
+  const { parsed, channel, callId, res } = args;
+  const callbacks = buildCallbackUrls();
+  const behavior = channel.afterHoursBehavior ?? "voicemail";
+  await logTelephonyEvent({
+    userId: channel.userId,
+    callRecordId: callId,
+    eventType: `after_hours:${behavior}`,
+    providerEventId: `after_hours:${parsed.providerCallSid}`,
+    rawPayload: { afterHoursBehavior: behavior, allowVoicemail: channel.allowVoicemail },
+  });
+
+  switch (behavior) {
+    case "voicemail": {
+      if (channel.allowVoicemail) {
+        sendTwiml(
+          res,
+          twilioProvider.buildVoicemailRecord({
+            sayText:
+              channel.greetingText ??
+              "Thank you for calling. We are currently closed. Please leave a message after the tone.",
+            statusUrl: callbacks.statusUrl,
+            recordingUrl: callbacks.recordingUrl,
+            maxLengthSeconds: channel.maxCallDurationSeconds ?? undefined,
+          }).body,
+        );
+        return;
+      }
+      sendTwiml(
+        res,
+        twilioProvider.buildHangup({
+          sayText:
+            "Thank you for calling. We are currently closed. Please call back during business hours. Goodbye.",
+        }).body,
+      );
+      return;
+    }
+    case "forward": {
+      if (channel.forwardNumber) {
+        sendTwiml(
+          res,
+          twilioProvider.buildTransferDial({
+            sayText: "Connecting your call.",
+            phoneNumber: channel.forwardNumber,
+            statusUrl: callbacks.statusUrl,
+            recordingUrl: callbacks.recordingUrl,
+            recordCalls: channel.recordCalls,
+            maxCallDurationSeconds: channel.maxCallDurationSeconds ?? null,
+          }).body,
+        );
+        return;
+      }
+      // No forward number configured — degrade gracefully.
+      if (channel.allowVoicemail) {
+        sendTwiml(
+          res,
+          twilioProvider.buildVoicemailRecord({
+            sayText:
+              "We are unable to connect your call right now. Please leave a message after the tone.",
+            statusUrl: callbacks.statusUrl,
+            recordingUrl: callbacks.recordingUrl,
+            maxLengthSeconds: channel.maxCallDurationSeconds ?? undefined,
+          }).body,
+        );
+        return;
+      }
+      sendTwiml(
+        res,
+        twilioProvider.buildHangup({
+          sayText: "Thank you for calling. Goodbye.",
+        }).body,
+      );
+      return;
+    }
+    case "ai_intake_placeholder": {
+      const profile = await loadProfileForChannel(channel);
+      if (profile) {
+        await runAiFlow({ parsed, channel, callId, res, profile });
+        return;
+      }
+      // No usable profile — fall back to voicemail or hangup.
+      if (channel.allowVoicemail) {
+        sendTwiml(
+          res,
+          twilioProvider.buildVoicemailRecord({
+            sayText:
+              "Thank you for calling. Please leave a message after the tone and we'll follow up.",
+            statusUrl: callbacks.statusUrl,
+            recordingUrl: callbacks.recordingUrl,
+            maxLengthSeconds: channel.maxCallDurationSeconds ?? undefined,
+          }).body,
+        );
+        return;
+      }
+      sendTwiml(
+        res,
+        twilioProvider.buildHangup({
+          sayText: "Thank you for calling. We are currently closed. Goodbye.",
+        }).body,
+      );
+      return;
+    }
+    case "hangup":
+    default: {
+      sendTwiml(
+        res,
+        twilioProvider.buildHangup({
+          sayText:
+            "Thank you for calling. We are currently closed. Please call back during business hours. Goodbye.",
+        }).body,
+      );
+      return;
+    }
+  }
+}
+
+/**
+ * Live AI receptionist flow — extracted from the original /incoming so
+ * that the after-hours `ai_after_hours_intake` branch can re-use it.
+ */
+async function runAiFlow(args: {
+  parsed: NormalizedIncoming;
+  channel: Channel;
+  callId: string;
+  res: Response;
+  profile?: ReceptionistProfile;
+}): Promise<void> {
+  const { parsed, channel, callId, res } = args;
+  let profile = args.profile;
+  if (!profile) {
+    const loaded = await loadProfileForChannel(channel);
+    if (!loaded) {
+      logger.warn(
+        { channelId: channel.id },
+        "AI live behavior set but no enabled receptionist profile — falling back to standard flow",
+      );
+      runStandardFlow(channel, res);
+      return;
+    }
+    profile = loaded;
+  }
+  const session = await ensureLiveSession({
+    channel,
+    profile,
+    providerCallSid: parsed.providerCallSid,
+    callRecordId: callId,
+    fromNumber: parsed.fromNumber,
+    toNumber: parsed.toNumber,
+  });
+  const callbacks = buildCallbackUrls();
+
+  // First-turn greeting + first intake question. The greeting comes
+  // straight from the profile so the operator has full editorial control
+  // over what the caller hears. The consent script (if configured) is
+  // also spoken — this is informational only when consent gating is OFF.
+  // When `consentRequiredBeforeRecording=true` the gate already ran in
+  // executeIncomingFlow before we get here.
+  const consentLine =
+    channel.requireRecordingConsent && channel.consentScript
+      ? channel.consentScript
+      : null;
+  const intakeState = evaluateIntake(
+    profile.intakeSchema as IntakeSchema | null,
+    session.collectedData ?? {},
+  );
+  const firstQuestion = intakeState.next
+    ? buildQuestionFor(intakeState.next)
+    : "How can we help you today?";
+  const sayText = [profile.greetingScript, consentLine, firstQuestion]
+    .filter((s): s is string => typeof s === "string" && s.length > 0)
+    .join(" ");
+
+  await db
+    .update(liveCallSessionsTable)
+    .set({
+      lastQuestionKey: intakeState.next?.key ?? null,
+      askedFieldKeys: intakeState.next
+        ? [...new Set([...(session.askedFieldKeys ?? []), intakeState.next.key])]
+        : session.askedFieldKeys,
+      currentStep: intakeState.next
+        ? `asking ${intakeState.next.key}`
+        : "open_question",
+      transcriptLive: `${session.transcriptLive ?? ""}AI: ${sayText}\n`,
+    })
+    .where(eq(liveCallSessionsTable.id, session.id));
+
+  const out = twilioProvider.buildGatherResponse({
+    sayText,
+    gatherActionUrl: callbacks.gatherUrl,
+    timeoutHangupText:
+      profile.fallbackScript ??
+      "Thanks for calling. We'll follow up. Goodbye.",
+  });
+  sendTwiml(res, out.body);
+}
+
+/**
+ * Single source of truth for inbound call dispatch. Runs in this order:
+ *   1. Recording-consent gate (if `requireRecordingConsent &&
+ *      consentRequiredBeforeRecording`). Re-entered by /voice/consent.
+ *   2. Business-hours check. After-hours → `runAfterHoursBranch`.
+ *   3. In-hours → AI flow OR standard record/forward/voicemail flow.
+ *
+ * Note: `liveBehavior === "ai_after_hours_intake"` is *opposite-side* —
+ * it only engages the AI when the call lands after hours, so during
+ * business hours we treat it as a standard recording channel.
+ */
+async function executeIncomingFlow(args: {
+  parsed: NormalizedIncoming;
+  channel: Channel;
+  callId: string;
+  res: Response;
+  consentVerified: boolean;
+}): Promise<void> {
+  const { parsed, channel, callId, res, consentVerified } = args;
+
+  if (
+    !consentVerified &&
+    channel.requireRecordingConsent === true &&
+    channel.consentRequiredBeforeRecording === true
+  ) {
+    sendConsentGather(res, channel);
+    return;
+  }
+
+  const inHours = isWithinBusinessHours(channel.businessHours);
+  if (!inHours) {
+    // `ai_after_hours_intake` engages the AI receptionist *only* when the
+    // call lands after hours, regardless of the channel's
+    // afterHoursBehavior. Honor that intent here before falling through
+    // to the configured after-hours dispatcher.
+    if (channel.liveBehavior === "ai_after_hours_intake") {
+      const profile = await loadProfileForChannel(channel);
+      if (profile) {
+        await runAiFlow({ parsed, channel, callId, res, profile });
+        return;
+      }
+      // No usable profile → fall through to the configured branch.
+    }
+    await runAfterHoursBranch({ parsed, channel, callId, res });
+    return;
+  }
+
+  if (
+    channel.liveBehavior !== "ai_after_hours_intake" &&
+    isAiBehavior(channel)
+  ) {
+    await runAiFlow({ parsed, channel, callId, res });
+    return;
+  }
+
+  runStandardFlow(channel, res);
+}
+
 // POST /api/twilio/voice/incoming
 // Twilio dials this when a call lands on a configured number. We must
 // respond with TwiML synchronously — anything heavy is deferred.
@@ -262,12 +577,7 @@ router.post(
         { toNumber: parsed.toNumber, callSid: parsed.providerCallSid },
         "Twilio incoming: no matching/active channel for dialed number",
       );
-      const ctx = buildContext(null);
-      const out = twilioProvider.generateIncomingResponse(
-        ctx,
-        buildCallbackUrls(),
-      );
-      sendTwiml(res, out.body);
+      runStandardFlow(null, res);
       return;
     }
 
@@ -286,86 +596,106 @@ router.post(
       rawPayload: parsed.rawPayload,
     });
 
-    // Branch on the channel's live behavior. Non-AI behaviors keep the
-    // Phase 2 record/forward/voicemail flow; AI behaviors enter the
-    // multi-turn Gather loop.
-    if (isAiBehavior(channel)) {
-      const profile = await loadProfileForChannel(channel);
-      if (!profile) {
-        logger.warn(
-          { channelId: channel.id },
-          "AI live behavior set but no enabled receptionist profile — falling back to record",
-        );
-        const ctx = buildContext(channel);
-        const out = twilioProvider.generateIncomingResponse(
-          ctx,
-          buildCallbackUrls(),
-        );
-        sendTwiml(res, out.body);
+    await executeIncomingFlow({
+      parsed,
+      channel,
+      callId,
+      res,
+      consentVerified: false,
+    });
+  },
+);
+
+// POST /api/twilio/voice/consent — DTMF result for the consent gate. On
+// "1" we re-enter the main flow with `consentVerified=true`. On "2" or
+// silence we politely hang up. Every outcome writes a telephony event so
+// the operator can audit consent decisions per call.
+router.post(
+  "/twilio/voice/consent",
+  async (req: Request, res: Response): Promise<void> => {
+    if (!twilioProvider.validateRequest(req)) {
+      sendTwiml(res, SAFE_HANGUP_TWIML, 403);
+      return;
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const callSid = typeof body["CallSid"] === "string" ? body["CallSid"] : "";
+    const digits = typeof body["Digits"] === "string" ? body["Digits"] : "";
+    const parsed = twilioProvider.parseIncoming(body);
+    if (!callSid || !parsed) {
+      sendTwiml(res, SAFE_HANGUP_TWIML, 400);
+      return;
+    }
+    const channel = await findChannelByDialedNumber(parsed.toNumber);
+    if (!channel || !channel.isActive) {
+      sendTwiml(res, SAFE_HANGUP_TWIML, 404);
+      return;
+    }
+    const [call] = await db
+      .select()
+      .from(callRecordsTable)
+      .where(
+        and(
+          eq(callRecordsTable.userId, channel.userId),
+          eq(callRecordsTable.providerCallSid, callSid),
+        ),
+      )
+      .limit(1);
+    const callId = call?.id ?? null;
+
+    if (digits === "1") {
+      await logTelephonyEvent({
+        userId: channel.userId,
+        callRecordId: callId,
+        eventType: "consent:accepted",
+        providerEventId: `consent:${callSid}:accepted`,
+        rawPayload: body,
+      });
+      if (!callId) {
+        // call_records row should exist from /incoming; if not, hang up
+        // safely rather than risking an orphaned conversation.
+        sendTwiml(res, SAFE_HANGUP_TWIML, 404);
         return;
       }
-      const session = await ensureLiveSession({
+      await executeIncomingFlow({
+        parsed,
         channel,
-        profile,
-        providerCallSid: parsed.providerCallSid,
-        callRecordId: callId,
-        fromNumber: parsed.fromNumber,
-        toNumber: parsed.toNumber,
+        callId,
+        res,
+        consentVerified: true,
       });
-      const callbacks = buildCallbackUrls();
-
-      // First-turn greeting + first intake question. The greeting comes
-      // straight from the profile so the operator has full editorial
-      // control over what the caller hears.
-      const consentLine =
-        channel.requireRecordingConsent && channel.consentScript
-          ? channel.consentScript
-          : null;
-      const intakeState = evaluateIntake(
-        profile.intakeSchema as IntakeSchema | null,
-        session.collectedData ?? {},
-      );
-      const firstQuestion = intakeState.next
-        ? buildQuestionFor(intakeState.next)
-        : "How can we help you today?";
-      const sayText = [profile.greetingScript, consentLine, firstQuestion]
-        .filter((s): s is string => typeof s === "string" && s.length > 0)
-        .join(" ");
-
-      // Persist the field key we're asking for so /gather can bind the
-      // answer correctly even if the caller's reply is ambiguous.
-      await db
-        .update(liveCallSessionsTable)
-        .set({
-          lastQuestionKey: intakeState.next?.key ?? null,
-          askedFieldKeys: intakeState.next
-            ? [...new Set([...(session.askedFieldKeys ?? []), intakeState.next.key])]
-            : session.askedFieldKeys,
-          currentStep: intakeState.next
-            ? `asking ${intakeState.next.key}`
-            : "open_question",
-          transcriptLive: `${session.transcriptLive ?? ""}AI: ${sayText}\n`,
-        })
-        .where(eq(liveCallSessionsTable.id, session.id));
-
-      const out = twilioProvider.buildGatherResponse({
-        sayText,
-        gatherActionUrl: callbacks.gatherUrl,
-        timeoutHangupText:
-          profile.fallbackScript ??
-          "Thanks for calling. We'll follow up. Goodbye.",
-      });
-      sendTwiml(res, out.body);
       return;
     }
 
-    // Non-AI behaviors: existing record / forward / voicemail flow.
-    const ctx = buildContext(channel);
-    const out = twilioProvider.generateIncomingResponse(
-      ctx,
-      buildCallbackUrls(),
-    );
-    sendTwiml(res, out.body);
+    if (digits === "2" || digits === "") {
+      const outcome = digits === "2" ? "declined" : "no_response";
+      await logTelephonyEvent({
+        userId: channel.userId,
+        callRecordId: callId,
+        eventType: `consent:${outcome}`,
+        providerEventId: `consent:${callSid}:${outcome}`,
+        rawPayload: body,
+      });
+      sendTwiml(
+        res,
+        twilioProvider.buildHangup({
+          sayText:
+            outcome === "declined"
+              ? "Understood. We are unable to proceed without recording consent. Goodbye."
+              : "No response received. Goodbye.",
+        }).body,
+      );
+      return;
+    }
+
+    // Anything else — re-prompt once.
+    await logTelephonyEvent({
+      userId: channel.userId,
+      callRecordId: callId,
+      eventType: "consent:invalid",
+      providerEventId: `consent:${callSid}:invalid:${digits}`,
+      rawPayload: body,
+    });
+    sendConsentGather(res, channel);
   },
 );
 

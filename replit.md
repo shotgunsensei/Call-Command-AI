@@ -10,7 +10,65 @@ Key capabilities include:
 - Supporting multi-line call orchestration with per-channel flow definitions and channel-aware TwiML.
 - Providing a dashboard for analytics and operational insights, plus a polled Switchboard view for live operations.
 
-# Phase 3 — Live AI Receptionist + Transfer Logic (current)
+# Phase 3 — Production-Readiness Hardening (current)
+
+This pass closes the gaps surfaced in the Phase 3 review and makes the
+live-call layer safe to put in front of real callers.
+
+- **Channel persistence + ownership.**
+  `POST/PATCH /api/channels` now persists, validates, and round-trips
+  every Phase 3 field — `liveBehavior`, `receptionistProfileId`,
+  `requireRecordingConsent`, `consentScript`,
+  `consentRequiredBeforeRecording`. Invalid `liveBehavior`/
+  `afterHoursBehavior` values return 400. `receptionistProfileId` is
+  ownership-checked against `receptionist_profiles.user_id` so one
+  workspace cannot bind a channel to another workspace's profile.
+- **Global phone uniqueness.** `POST/PATCH /api/channels` rejects a
+  `phoneNumber` already used by a different channel (any workspace) with
+  HTTP 409 — Twilio numbers can only legitimately route to one workspace
+  at a time.
+- **Business-hours enforcement.** New helper
+  `lib/businessHours.ts` evaluates `channels.business_hours` (timezone
+  aware, supports overnight 22:00→06:00 ranges, safe defaults). The
+  Twilio incoming dispatcher branches on
+  `channels.after_hours_behavior` outside the configured window:
+  `voicemail` (gated on `allowVoicemail`), `forward` (degrades to
+  voicemail/hangup if `forwardNumber` missing),
+  `ai_intake_placeholder` (loads the receptionist profile and runs the
+  AI flow), or `hangup`. The opposite-side `liveBehavior =
+  ai_after_hours_intake` only engages the AI receptionist when the call
+  lands after hours.
+- **Recording-consent gating.** When
+  `requireRecordingConsent && consentRequiredBeforeRecording`, the
+  Twilio `/voice/incoming` handler responds with a DTMF Gather playing
+  `consentScript`. New endpoint `POST /api/twilio/voice/consent`:
+  signature-validated, decodes Digits, writes a per-call
+  `telephony_events` row (`consent:accepted | declined | no_response |
+  invalid` keyed on `consent:{callSid}:{outcome}`), then either
+  re-enters the main flow with `consentVerified=true`, hangs up with an
+  explanation, or re-prompts.
+- **Caller phone preservation.**
+  `services/callPipeline.ts` now uses `COALESCE(call_records.caller_phone,
+  ${analysisGuess})` so the provider-supplied `From` is never clobbered
+  by the AI analysis service's best guess.
+- **Real switchboard transfer.** New `services/twilioControl.ts`
+  redirects a live call via Twilio's `Calls/{Sid}` REST update
+  (`Twiml=` inline). `POST /api/live-sessions/:id/transfer` calls it
+  and writes a `transfer_logs` row whose `status` is the coarse audit
+  value (`bridged | failed`) and whose `reason` carries the rich
+  outcome (`[redirected | logged_no_provider | no_call_sid |
+  no_target_phone | failed] <message>`). HTTP responses are honest:
+  202 when we logged the intent but no live redirect happened (Twilio
+  unconfigured, non-Twilio session, missing target phone), 502 on
+  upstream Twilio failures, 200 on real bridge.
+- **Smoke checks.** `scripts/smoke-phase3-hardening.sh` exercises
+  `/api/healthz`, signature rejection on `/voice/incoming` and
+  `/voice/consent`, auth required on `/channels` and
+  `/live-sessions/:id/transfer`, and pure-helper sanity (business
+  hours including overnight + malformed input, E.164 normalization).
+  `pnpm run typecheck` is green.
+
+# Phase 3 — Live AI Receptionist + Transfer Logic
 
 Phase 3 builds the live, real-time voice layer on top of Phase 2:
 

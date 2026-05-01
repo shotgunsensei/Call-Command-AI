@@ -1,0 +1,56 @@
+Perform a production-readiness hardening pass for CallCommand.
+
+Do not rebuild the app. Fix only the gaps below.
+
+1. Fix channel create/update persistence:
+- routes/channels.ts must accept and persist:
+  liveBehavior
+  receptionistProfileId
+  requireRecordingConsent
+  consentScript
+  consentRequiredBeforeRecording
+- Validate liveBehavior against allowed values.
+- Ensure receptionistProfileId belongs to the authenticated user before assigning.
+
+2. Enforce business-hours logic:
+- Add helper to evaluate channels.businessHours.
+- In Twilio incoming route, branch inside/outside business hours.
+- Enforce afterHoursBehavior:
+  voicemail
+  forward
+  ai_intake_placeholder / ai_after_hours_intake
+  hangup
+- Respect allowVoicemail.
+
+3. Fix consent handling:
+- If requireRecordingConsent and consentRequiredBeforeRecording are true, collect confirmation before recording or transfer-recording.
+- If caller does not consent, route to non-recorded fallback or hangup based on channel config.
+- Add clear flow logs / telephony events for consent accepted/declined.
+
+4. Fix callerPhone preservation:
+- In runCallPipeline, do not overwrite an existing callerPhone with null or AI guess.
+- Preserve provider caller phone as source of truth unless explicitly missing.
+
+5. Make switchboard transfer honest:
+- Either implement real Twilio active-call redirect using Twilio REST API, or rename the action to “log transfer request” and remove any implication that it transfers the live call.
+- Preferred: implement Twilio Calls API update with TwiML redirect if credentials are configured.
+- Add fallback behavior when Twilio API is not configured.
+
+6. Add global phone-number uniqueness:
+- Normalize phone numbers to E.164 before saving.
+- Prevent two channels from using the same phoneNumber.
+- Add DB constraint or application-level guard if migration is risky.
+
+7. Add tests/smoke checks:
+- Manual channel update persists liveBehavior and receptionistProfileId.
+- Business hours route correctly.
+- After-hours voicemail/forward/hangup works.
+- Consent required blocks recording until accepted.
+- Existing callerPhone survives pipeline analysis.
+- Switchboard transfer either performs real Twilio redirect or returns explicit unsupported/config error.
+
+After fixes:
+- run pnpm run typecheck
+- run available tests/smoke scripts
+- update replit.md with exact fixes
+- do not claim production readiness unless all checks pass
