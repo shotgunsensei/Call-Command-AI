@@ -152,8 +152,12 @@ export async function evaluateAndExecuteRules(args: {
         result = await executeAction({
           userId: args.userId,
           call: args.call,
-          rule,
-          action,
+          action: action as unknown as Parameters<typeof executeAction>[0]["action"],
+          context: {
+            source: "rule",
+            ruleId: rule.id,
+            ruleName: rule.name,
+          },
         });
       } catch (err) {
         logger.error(

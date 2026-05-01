@@ -46,6 +46,10 @@ export interface Call {
   isDemo: string;
   /** @nullable */
   errorMessage?: string | null;
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  assignedUserId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   actionItems: ActionItem[];

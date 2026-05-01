@@ -15,7 +15,10 @@ import {
   Workflow,
   Ticket as TicketIcon,
   UserPlus,
-  ListTodo
+  ListTodo,
+  Radio,
+  GitBranch,
+  Sparkles
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./ui/button";
@@ -36,6 +39,9 @@ const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Calls", href: "/calls", icon: Phone },
   { label: "New Call", href: "/calls/new", icon: UploadIcon },
+  { label: "Channels", href: "/channels", icon: Radio },
+  { label: "Flows", href: "/flows", icon: GitBranch },
+  { label: "Simulator", href: "/simulate", icon: Sparkles },
   { label: "Tickets", href: "/tickets", icon: TicketIcon },
   { label: "Leads", href: "/leads", icon: UserPlus },
   { label: "Tasks", href: "/tasks", icon: ListTodo },
@@ -61,7 +67,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           location === item.href ||
           (item.href === "/calls" &&
             location.startsWith("/calls/") &&
-            location !== "/calls/new");
+            location !== "/calls/new") ||
+          (item.href === "/flows" && location.startsWith("/flows/"));
         return (
           <Link key={item.href} href={item.href} onClick={onClick}>
             <div

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Call } from "./call";
+import type { DashboardStatsCallsByChannelItem } from "./dashboardStatsCallsByChannelItem";
 import type { DashboardStatsConversionFunnel } from "./dashboardStatsConversionFunnel";
 import type { SentimentBucket } from "./sentimentBucket";
 import type { TagCount } from "./tagCount";
@@ -19,6 +20,10 @@ export interface DashboardStats {
   newLeadsThisWeek: number;
   openTasks: number;
   angrySentimentAlerts: number;
+  activeChannels: number;
+  missedCalls: number;
+  escalations: number;
+  callsByChannel: DashboardStatsCallsByChannelItem[];
   conversionFunnel: DashboardStatsConversionFunnel;
   recentCalls: Call[];
   sentimentBreakdown: SentimentBucket[];

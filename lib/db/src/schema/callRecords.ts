@@ -33,6 +33,8 @@ export const callRecordsTable = pgTable("call_records", {
   suggestedTags: jsonb("suggested_tags").$type<string[]>().notNull().default([]),
   isDemo: text("is_demo").notNull().default("false"),
   errorMessage: text("error_message"),
+  channelId: uuid("channel_id"),
+  assignedUserId: varchar("assigned_user_id", { length: 64 }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

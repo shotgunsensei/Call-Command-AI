@@ -22,14 +22,22 @@ import type {
   AutomationRuleList,
   BillingPlan,
   Call,
+  CallFlow,
+  CallFlowList,
   CallList,
+  Channel,
+  ChannelList,
   CheckoutSession,
   CreateAutomationRuleBody,
   CreateCallBody,
+  CreateCallFlowBody,
+  CreateChannelBody,
   CreateCheckoutBody,
   CreateIntegrationBody,
   DashboardStats,
   Error,
+  FlowExecutionResult,
+  FlowLogList,
   Followup,
   FollowupList,
   HealthStatus,
@@ -46,12 +54,15 @@ import type {
   RuleExecutionResult,
   SendFollowupBody,
   SendWebhookBody,
+  SimulateCallBody,
   Task,
   TaskList,
   Ticket,
   TicketList,
   UpdateActionItemBody,
   UpdateAutomationRuleBody,
+  UpdateCallFlowBody,
+  UpdateChannelBody,
   UpdateIntegrationBody,
   UpdateLeadBody,
   UpdateTaskBody,
@@ -3238,4 +3249,846 @@ export const useSimulateInboundCall = <
   TContext
 > => {
   return useMutation(getSimulateInboundCallMutationOptions(options));
+};
+
+export const getListChannelsUrl = () => {
+  return `/api/channels`;
+};
+
+export const listChannels = async (
+  options?: RequestInit,
+): Promise<ChannelList> => {
+  return customFetch<ChannelList>(getListChannelsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChannelsQueryKey = () => {
+  return [`/api/channels`] as const;
+};
+
+export const getListChannelsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChannels>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChannels>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChannelsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listChannels>>> = ({
+    signal,
+  }) => listChannels({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChannels>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChannelsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChannels>>
+>;
+export type ListChannelsQueryError = ErrorType<unknown>;
+
+export function useListChannels<
+  TData = Awaited<ReturnType<typeof listChannels>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChannels>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChannelsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateChannelUrl = () => {
+  return `/api/channels`;
+};
+
+export const createChannel = async (
+  createChannelBody: CreateChannelBody,
+  options?: RequestInit,
+): Promise<Channel> => {
+  return customFetch<Channel>(getCreateChannelUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createChannelBody),
+  });
+};
+
+export const getCreateChannelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChannel>>,
+    TError,
+    { data: BodyType<CreateChannelBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createChannel>>,
+  TError,
+  { data: BodyType<CreateChannelBody> },
+  TContext
+> => {
+  const mutationKey = ["createChannel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createChannel>>,
+    { data: BodyType<CreateChannelBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createChannel(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateChannelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createChannel>>
+>;
+export type CreateChannelMutationBody = BodyType<CreateChannelBody>;
+export type CreateChannelMutationError = ErrorType<unknown>;
+
+export const useCreateChannel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChannel>>,
+    TError,
+    { data: BodyType<CreateChannelBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createChannel>>,
+  TError,
+  { data: BodyType<CreateChannelBody> },
+  TContext
+> => {
+  return useMutation(getCreateChannelMutationOptions(options));
+};
+
+export const getUpdateChannelUrl = (id: string) => {
+  return `/api/channels/${id}`;
+};
+
+export const updateChannel = async (
+  id: string,
+  updateChannelBody: UpdateChannelBody,
+  options?: RequestInit,
+): Promise<Channel> => {
+  return customFetch<Channel>(getUpdateChannelUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateChannelBody),
+  });
+};
+
+export const getUpdateChannelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChannel>>,
+    TError,
+    { id: string; data: BodyType<UpdateChannelBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChannel>>,
+  TError,
+  { id: string; data: BodyType<UpdateChannelBody> },
+  TContext
+> => {
+  const mutationKey = ["updateChannel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChannel>>,
+    { id: string; data: BodyType<UpdateChannelBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateChannel(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChannelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChannel>>
+>;
+export type UpdateChannelMutationBody = BodyType<UpdateChannelBody>;
+export type UpdateChannelMutationError = ErrorType<unknown>;
+
+export const useUpdateChannel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChannel>>,
+    TError,
+    { id: string; data: BodyType<UpdateChannelBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateChannel>>,
+  TError,
+  { id: string; data: BodyType<UpdateChannelBody> },
+  TContext
+> => {
+  return useMutation(getUpdateChannelMutationOptions(options));
+};
+
+export const getDeleteChannelUrl = (id: string) => {
+  return `/api/channels/${id}`;
+};
+
+export const deleteChannel = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteChannelUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteChannelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChannel>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteChannel>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteChannel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteChannel>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteChannel(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteChannelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteChannel>>
+>;
+
+export type DeleteChannelMutationError = ErrorType<unknown>;
+
+export const useDeleteChannel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChannel>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteChannel>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteChannelMutationOptions(options));
+};
+
+export const getListFlowsUrl = () => {
+  return `/api/flows`;
+};
+
+export const listFlows = async (
+  options?: RequestInit,
+): Promise<CallFlowList> => {
+  return customFetch<CallFlowList>(getListFlowsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFlowsQueryKey = () => {
+  return [`/api/flows`] as const;
+};
+
+export const getListFlowsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFlows>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listFlows>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListFlowsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listFlows>>> = ({
+    signal,
+  }) => listFlows({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFlows>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFlowsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFlows>>
+>;
+export type ListFlowsQueryError = ErrorType<unknown>;
+
+export function useListFlows<
+  TData = Awaited<ReturnType<typeof listFlows>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listFlows>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFlowsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateFlowUrl = () => {
+  return `/api/flows`;
+};
+
+export const createFlow = async (
+  createCallFlowBody: CreateCallFlowBody,
+  options?: RequestInit,
+): Promise<CallFlow> => {
+  return customFetch<CallFlow>(getCreateFlowUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCallFlowBody),
+  });
+};
+
+export const getCreateFlowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFlow>>,
+    TError,
+    { data: BodyType<CreateCallFlowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createFlow>>,
+  TError,
+  { data: BodyType<CreateCallFlowBody> },
+  TContext
+> => {
+  const mutationKey = ["createFlow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createFlow>>,
+    { data: BodyType<CreateCallFlowBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createFlow(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateFlowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createFlow>>
+>;
+export type CreateFlowMutationBody = BodyType<CreateCallFlowBody>;
+export type CreateFlowMutationError = ErrorType<unknown>;
+
+export const useCreateFlow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFlow>>,
+    TError,
+    { data: BodyType<CreateCallFlowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createFlow>>,
+  TError,
+  { data: BodyType<CreateCallFlowBody> },
+  TContext
+> => {
+  return useMutation(getCreateFlowMutationOptions(options));
+};
+
+export const getGetFlowUrl = (id: string) => {
+  return `/api/flows/${id}`;
+};
+
+export const getFlow = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CallFlow> => {
+  return customFetch<CallFlow>(getGetFlowUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFlowQueryKey = (id: string) => {
+  return [`/api/flows/${id}`] as const;
+};
+
+export const getGetFlowQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFlow>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getFlow>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFlowQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFlow>>> = ({
+    signal,
+  }) => getFlow(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getFlow>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetFlowQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFlow>>
+>;
+export type GetFlowQueryError = ErrorType<unknown>;
+
+export function useGetFlow<
+  TData = Awaited<ReturnType<typeof getFlow>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getFlow>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFlowQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUpdateFlowUrl = (id: string) => {
+  return `/api/flows/${id}`;
+};
+
+export const updateFlow = async (
+  id: string,
+  updateCallFlowBody: UpdateCallFlowBody,
+  options?: RequestInit,
+): Promise<CallFlow> => {
+  return customFetch<CallFlow>(getUpdateFlowUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCallFlowBody),
+  });
+};
+
+export const getUpdateFlowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFlow>>,
+    TError,
+    { id: string; data: BodyType<UpdateCallFlowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateFlow>>,
+  TError,
+  { id: string; data: BodyType<UpdateCallFlowBody> },
+  TContext
+> => {
+  const mutationKey = ["updateFlow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateFlow>>,
+    { id: string; data: BodyType<UpdateCallFlowBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateFlow(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateFlowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateFlow>>
+>;
+export type UpdateFlowMutationBody = BodyType<UpdateCallFlowBody>;
+export type UpdateFlowMutationError = ErrorType<unknown>;
+
+export const useUpdateFlow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFlow>>,
+    TError,
+    { id: string; data: BodyType<UpdateCallFlowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateFlow>>,
+  TError,
+  { id: string; data: BodyType<UpdateCallFlowBody> },
+  TContext
+> => {
+  return useMutation(getUpdateFlowMutationOptions(options));
+};
+
+export const getDeleteFlowUrl = (id: string) => {
+  return `/api/flows/${id}`;
+};
+
+export const deleteFlow = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteFlowUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteFlowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFlow>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteFlow>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteFlow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteFlow>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteFlow(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteFlowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteFlow>>
+>;
+
+export type DeleteFlowMutationError = ErrorType<unknown>;
+
+export const useDeleteFlow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFlow>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteFlow>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteFlowMutationOptions(options));
+};
+
+export const getGetFlowLogsForCallUrl = (id: string) => {
+  return `/api/calls/${id}/flow-logs`;
+};
+
+export const getFlowLogsForCall = async (
+  id: string,
+  options?: RequestInit,
+): Promise<FlowLogList> => {
+  return customFetch<FlowLogList>(getGetFlowLogsForCallUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFlowLogsForCallQueryKey = (id: string) => {
+  return [`/api/calls/${id}/flow-logs`] as const;
+};
+
+export const getGetFlowLogsForCallQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFlowLogsForCall>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFlowLogsForCall>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFlowLogsForCallQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getFlowLogsForCall>>
+  > = ({ signal }) => getFlowLogsForCall(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFlowLogsForCall>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFlowLogsForCallQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFlowLogsForCall>>
+>;
+export type GetFlowLogsForCallQueryError = ErrorType<unknown>;
+
+export function useGetFlowLogsForCall<
+  TData = Awaited<ReturnType<typeof getFlowLogsForCall>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFlowLogsForCall>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFlowLogsForCallQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Simulate an inbound call against a chosen channel and run the flow engine.
+ */
+export const getSimulateCallWithFlowUrl = () => {
+  return `/api/simulate-call`;
+};
+
+export const simulateCallWithFlow = async (
+  simulateCallBody: SimulateCallBody,
+  options?: RequestInit,
+): Promise<FlowExecutionResult> => {
+  return customFetch<FlowExecutionResult>(getSimulateCallWithFlowUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(simulateCallBody),
+  });
+};
+
+export const getSimulateCallWithFlowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulateCallWithFlow>>,
+    TError,
+    { data: BodyType<SimulateCallBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof simulateCallWithFlow>>,
+  TError,
+  { data: BodyType<SimulateCallBody> },
+  TContext
+> => {
+  const mutationKey = ["simulateCallWithFlow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof simulateCallWithFlow>>,
+    { data: BodyType<SimulateCallBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return simulateCallWithFlow(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SimulateCallWithFlowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof simulateCallWithFlow>>
+>;
+export type SimulateCallWithFlowMutationBody = BodyType<SimulateCallBody>;
+export type SimulateCallWithFlowMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Simulate an inbound call against a chosen channel and run the flow engine.
+ */
+export const useSimulateCallWithFlow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulateCallWithFlow>>,
+    TError,
+    { data: BodyType<SimulateCallBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof simulateCallWithFlow>>,
+  TError,
+  { data: BodyType<SimulateCallBody> },
+  TContext
+> => {
+  return useMutation(getSimulateCallWithFlowMutationOptions(options));
 };

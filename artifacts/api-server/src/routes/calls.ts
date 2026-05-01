@@ -29,6 +29,10 @@ import {
   evaluateAndExecuteRules,
   runRulesWithDefaults,
 } from "../services/rulesEngine";
+import {
+  executeFlowForCall,
+  resolveActiveFlowFor,
+} from "../services/flowEngine";
 import { Readable } from "stream";
 
 const router: IRouter = Router();
@@ -61,6 +65,8 @@ function serializeCall(
     suggestedTags: call.suggestedTags ?? [],
     isDemo: call.isDemo ?? "false",
     errorMessage: call.errorMessage,
+    channelId: call.channelId,
+    assignedUserId: call.assignedUserId,
     createdAt: call.createdAt.toISOString(),
     updatedAt: call.updatedAt.toISOString(),
     actionItems: actionItems.map((ai) => ({
@@ -186,6 +192,24 @@ async function runProcessing(
       .limit(1);
     if (updated) {
       await evaluateAndExecuteRules({ userId, call: updated });
+      // After rules, walk the channel-bound flow (if any). Failures here are
+      // non-fatal — the call has already been persisted in its analyzed state.
+      try {
+        const flow = await resolveActiveFlowFor(userId, updated.channelId);
+        if (flow) {
+          // Re-read so flow sees latest values that rules may have set.
+          const [latest] = await db
+            .select()
+            .from(callRecordsTable)
+            .where(eq(callRecordsTable.id, callId))
+            .limit(1);
+          if (latest) {
+            await executeFlowForCall({ userId, call: latest, flow });
+          }
+        }
+      } catch (err) {
+        void err;
+      }
     }
   } catch (err) {
     // Logger is request-scoped here; fall back to console-style structured log

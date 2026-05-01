@@ -25,6 +25,9 @@ import {
   ListTodo,
   HeartCrack,
   Sparkles,
+  Radio,
+  PhoneOff,
+  AlertOctagon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -161,6 +164,71 @@ export default function Dashboard() {
           icon={<HeartCrack className="h-4 w-4 text-destructive" />}
         />
       </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Active Channels"
+          value={stats.activeChannels ?? 0}
+          icon={<Radio className="h-4 w-4 text-muted-foreground" />}
+          href="/channels"
+        />
+        <StatCard
+          label="Missed / Errored"
+          value={stats.missedCalls ?? 0}
+          icon={<PhoneOff className="h-4 w-4 text-destructive" />}
+        />
+        <StatCard
+          label="Escalations (30d)"
+          value={stats.escalations ?? 0}
+          icon={<AlertOctagon className="h-4 w-4 text-yellow-500" />}
+          href="/flows"
+        />
+        <StatCard
+          label="Total Calls"
+          value={stats.totalCalls}
+          icon={<Phone className="h-4 w-4 text-muted-foreground" />}
+        />
+      </div>
+
+      {(stats.callsByChannel?.length ?? 0) > 0 && (
+        <Card className="bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Radio className="h-4 w-4 text-primary" /> Calls by channel
+            </CardTitle>
+            <CardDescription>
+              Volume per inbound line. Bind a flow to a channel from the Flows
+              page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.callsByChannel!.map((c) => {
+                const max = Math.max(
+                  ...stats.callsByChannel!.map((x) => x.count),
+                );
+                const pct = max > 0 ? Math.round((c.count / max) * 100) : 0;
+                return (
+                  <div key={c.channelId ?? "unassigned"} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium">{c.name}</span>
+                      <span className="text-muted-foreground">
+                        {c.count} call(s)
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className="h-full bg-primary"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="bg-card">
         <CardHeader>

@@ -9,3 +9,7 @@ export * from "./leads";
 export * from "./tasks";
 export * from "./followupLogs";
 export * from "./ingestionEvents";
+export * from "./channels";
+export * from "./callFlows";
+export * from "./flowNodes";
+export * from "./flowLogs";

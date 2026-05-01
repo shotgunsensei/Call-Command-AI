@@ -14,6 +14,10 @@ import leadsRouter from "./leads";
 import tasksRouter from "./tasks";
 import followupsRouter from "./followups";
 import ingestRouter from "./ingest";
+import channelsRouter from "./channels";
+import flowsRouter from "./flows";
+import flowLogsRouter from "./flowLogs";
+import simulateRouter from "./simulate";
 
 const router: IRouter = Router();
 
@@ -32,5 +36,9 @@ router.use(leadsRouter);
 router.use(tasksRouter);
 router.use(followupsRouter);
 router.use(ingestRouter);
+router.use(channelsRouter);
+router.use(flowsRouter);
+router.use(flowLogsRouter);
+router.use(simulateRouter);
 
 export default router;

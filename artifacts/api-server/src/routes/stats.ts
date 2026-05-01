@@ -11,6 +11,8 @@ import {
   ticketsTable,
   leadsTable,
   tasksTable,
+  channelsTable,
+  flowLogsTable,
 } from "@workspace/db";
 import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -106,6 +108,53 @@ router.get(
           sql`${callRecordsTable.sentiment} IN ('negative','mixed')`,
         ),
       );
+
+    const [{ activeChannels } = { activeChannels: 0 }] = await db
+      .select({ activeChannels: sql<number>`count(*)::int` })
+      .from(channelsTable)
+      .where(
+        and(
+          eq(channelsTable.userId, userId),
+          eq(channelsTable.isActive, true),
+        ),
+      );
+
+    const [{ missedCalls } = { missedCalls: 0 }] = await db
+      .select({ missedCalls: sql<number>`count(*)::int` })
+      .from(callRecordsTable)
+      .where(
+        and(
+          eq(callRecordsTable.userId, userId),
+          eq(callRecordsTable.status, "error"),
+        ),
+      );
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+    const [{ escalations } = { escalations: 0 }] = await db
+      .select({ escalations: sql<number>`count(*)::int` })
+      .from(flowLogsTable)
+      .where(
+        and(
+          eq(flowLogsTable.userId, userId),
+          eq(flowLogsTable.nodeType, "route"),
+          eq(flowLogsTable.branch, "escalate"),
+          gte(flowLogsTable.createdAt, thirtyDaysAgo),
+        ),
+      );
+
+    const callsByChannelRows = await db
+      .select({
+        channelId: callRecordsTable.channelId,
+        name: channelsTable.name,
+        count: sql<number>`count(${callRecordsTable.id})::int`,
+      })
+      .from(callRecordsTable)
+      .leftJoin(channelsTable, eq(callRecordsTable.channelId, channelsTable.id))
+      .where(eq(callRecordsTable.userId, userId))
+      .groupBy(callRecordsTable.channelId, channelsTable.name)
+      .orderBy(desc(sql<number>`count(${callRecordsTable.id})::int`))
+      .limit(10);
 
     // Conversion funnel: calls (this month) → leads (this month) → closed leads (this month)
     const [{ funnelCalls } = { funnelCalls: 0 }] = await db
@@ -232,6 +281,14 @@ router.get(
       newLeadsThisWeek: Number(newLeadsThisWeek) || 0,
       openTasks: Number(openTasks) || 0,
       angrySentimentAlerts: Number(angrySentimentAlerts) || 0,
+      activeChannels: Number(activeChannels) || 0,
+      missedCalls: Number(missedCalls) || 0,
+      escalations: Number(escalations) || 0,
+      callsByChannel: callsByChannelRows.map((r) => ({
+        channelId: r.channelId,
+        name: r.name ?? "Unassigned",
+        count: Number(r.count) || 0,
+      })),
       conversionFunnel: {
         calls: Number(funnelCalls) || 0,
         leads: Number(funnelLeads) || 0,

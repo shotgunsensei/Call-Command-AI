@@ -109,6 +109,10 @@ export interface Call {
   isDemo: string;
   /** @nullable */
   errorMessage?: string | null;
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  assignedUserId?: string | null;
   createdAt: string;
   updatedAt: string;
   actionItems: ActionItem[];
@@ -164,6 +168,13 @@ export interface TagCount {
   count: number;
 }
 
+export type DashboardStatsCallsByChannelItem = {
+  /** @nullable */
+  channelId?: string | null;
+  name: string;
+  count: number;
+};
+
 export type DashboardStatsConversionFunnel = {
   calls: number;
   leads: number;
@@ -179,6 +190,10 @@ export interface DashboardStats {
   newLeadsThisWeek: number;
   openTasks: number;
   angrySentimentAlerts: number;
+  activeChannels: number;
+  missedCalls: number;
+  escalations: number;
+  callsByChannel: DashboardStatsCallsByChannelItem[];
   conversionFunnel: DashboardStatsConversionFunnel;
   recentCalls: Call[];
   sentimentBreakdown: SentimentBucket[];
@@ -398,6 +413,187 @@ export interface RuleExecutionResult {
   rulesMatched: number;
   actionsExecuted: number;
   log: RuleExecutionResultLogItem[];
+}
+
+export interface Channel {
+  id: string;
+  userId: string;
+  name: string;
+  /** @nullable */
+  phoneNumber?: string | null;
+  type: string;
+  /** @nullable */
+  defaultRoute?: string | null;
+  isActive: boolean;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ChannelList = Channel[];
+
+export interface CreateChannelBody {
+  name: string;
+  /** @nullable */
+  phoneNumber?: string | null;
+  type: string;
+  /** @nullable */
+  defaultRoute?: string | null;
+  isActive?: boolean;
+}
+
+export interface UpdateChannelBody {
+  name?: string;
+  /** @nullable */
+  phoneNumber?: string | null;
+  type?: string;
+  /** @nullable */
+  defaultRoute?: string | null;
+  isActive?: boolean;
+}
+
+export type FlowNodeConfig = { [key: string]: unknown };
+
+export interface FlowNode {
+  id: string;
+  flowId: string;
+  type: string;
+  /** @nullable */
+  label?: string | null;
+  config: FlowNodeConfig;
+  /** @nullable */
+  nextNodeId?: string | null;
+  /** @nullable */
+  nextNodeIdFalse?: string | null;
+  orderIndex: number;
+}
+
+export interface CallFlow {
+  id: string;
+  userId: string;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  startNodeId?: string | null;
+  isActive: boolean;
+  nodes: FlowNode[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CallFlowList = CallFlow[];
+
+export type CreateCallFlowBodyNodesItemConfig = { [key: string]: unknown };
+
+export type CreateCallFlowBodyNodesItem = {
+  type: string;
+  /** @nullable */
+  label?: string | null;
+  config: CreateCallFlowBodyNodesItemConfig;
+  /** @nullable */
+  nextNodeRef?: string | null;
+  /** @nullable */
+  nextNodeFalseRef?: string | null;
+  /** @nullable */
+  ref?: string | null;
+};
+
+export interface CreateCallFlowBody {
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  channelId?: string | null;
+  isActive?: boolean;
+  nodes?: CreateCallFlowBodyNodesItem[];
+}
+
+export type UpdateCallFlowBodyNodesItemConfig = { [key: string]: unknown };
+
+export type UpdateCallFlowBodyNodesItem = {
+  type: string;
+  /** @nullable */
+  label?: string | null;
+  config: UpdateCallFlowBodyNodesItemConfig;
+  /** @nullable */
+  nextNodeRef?: string | null;
+  /** @nullable */
+  nextNodeFalseRef?: string | null;
+  /** @nullable */
+  ref?: string | null;
+};
+
+export interface UpdateCallFlowBody {
+  name?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  channelId?: string | null;
+  isActive?: boolean;
+  nodes?: UpdateCallFlowBodyNodesItem[];
+}
+
+/**
+ * @nullable
+ */
+export type FlowLogDetail = { [key: string]: unknown } | null;
+
+export interface FlowLog {
+  id: string;
+  userId: string;
+  callRecordId: string;
+  /** @nullable */
+  flowId?: string | null;
+  /** @nullable */
+  nodeId?: string | null;
+  nodeType: string;
+  /** @nullable */
+  nodeLabel?: string | null;
+  /** @nullable */
+  branch?: string | null;
+  ok: boolean;
+  /** @nullable */
+  message?: string | null;
+  /** @nullable */
+  detail?: FlowLogDetail;
+  /** @nullable */
+  stepIndex?: string | null;
+  createdAt: string;
+}
+
+export type FlowLogList = FlowLog[];
+
+export interface SimulateCallBody {
+  /** @nullable */
+  channelId?: string | null;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  callerPhone?: string | null;
+  /** @nullable */
+  transcript?: string | null;
+  /** @nullable */
+  intent?: string | null;
+  /** @nullable */
+  priority?: string | null;
+  /** @nullable */
+  sentiment?: string | null;
+}
+
+export interface FlowExecutionResult {
+  callId: string;
+  /** @nullable */
+  flowId?: string | null;
+  /** @nullable */
+  flowName?: string | null;
+  nodesExecuted: number;
+  actionsExecuted: number;
+  /** @nullable */
+  endedAt?: string | null;
+  log: FlowLog[];
 }
 
 export type ListCallsParams = {

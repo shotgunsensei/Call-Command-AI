@@ -74,6 +74,8 @@ export const ListCallsResponseItem = zod.object({
   suggestedTags: zod.array(zod.string()),
   isDemo: zod.string(),
   errorMessage: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  assignedUserId: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   actionItems: zod.array(
@@ -130,6 +132,8 @@ export const GetCallResponse = zod.object({
   suggestedTags: zod.array(zod.string()),
   isDemo: zod.string(),
   errorMessage: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  assignedUserId: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   actionItems: zod.array(
@@ -184,6 +188,8 @@ export const ProcessCallResponse = zod.object({
   suggestedTags: zod.array(zod.string()),
   isDemo: zod.string(),
   errorMessage: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  assignedUserId: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   actionItems: zod.array(
@@ -333,6 +339,16 @@ export const GetDashboardStatsResponse = zod.object({
   newLeadsThisWeek: zod.number(),
   openTasks: zod.number(),
   angrySentimentAlerts: zod.number(),
+  activeChannels: zod.number(),
+  missedCalls: zod.number(),
+  escalations: zod.number(),
+  callsByChannel: zod.array(
+    zod.object({
+      channelId: zod.string().nullish(),
+      name: zod.string(),
+      count: zod.number(),
+    }),
+  ),
   conversionFunnel: zod.object({
     calls: zod.number(),
     leads: zod.number(),
@@ -362,6 +378,8 @@ export const GetDashboardStatsResponse = zod.object({
       suggestedTags: zod.array(zod.string()),
       isDemo: zod.string(),
       errorMessage: zod.string().nullish(),
+      channelId: zod.string().nullish(),
+      assignedUserId: zod.string().nullish(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
       actionItems: zod.array(
@@ -767,6 +785,8 @@ export const SimulateInboundCallResponse = zod.object({
   suggestedTags: zod.array(zod.string()),
   isDemo: zod.string(),
   errorMessage: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  assignedUserId: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   actionItems: zod.array(
@@ -782,4 +802,214 @@ export const SimulateInboundCallResponse = zod.object({
       updatedAt: zod.coerce.date(),
     }),
   ),
+});
+
+export const ListChannelsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  phoneNumber: zod.string().nullish(),
+  type: zod.string(),
+  defaultRoute: zod.string().nullish(),
+  isActive: zod.boolean(),
+  isDefault: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListChannelsResponse = zod.array(ListChannelsResponseItem);
+
+export const CreateChannelBody = zod.object({
+  name: zod.string(),
+  phoneNumber: zod.string().nullish(),
+  type: zod.string(),
+  defaultRoute: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateChannelParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateChannelBody = zod.object({
+  name: zod.string().optional(),
+  phoneNumber: zod.string().nullish(),
+  type: zod.string().optional(),
+  defaultRoute: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateChannelResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  phoneNumber: zod.string().nullish(),
+  type: zod.string(),
+  defaultRoute: zod.string().nullish(),
+  isActive: zod.boolean(),
+  isDefault: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const DeleteChannelParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ListFlowsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  startNodeId: zod.string().nullish(),
+  isActive: zod.boolean(),
+  nodes: zod.array(
+    zod.object({
+      id: zod.string(),
+      flowId: zod.string(),
+      type: zod.string(),
+      label: zod.string().nullish(),
+      config: zod.object({}).passthrough(),
+      nextNodeId: zod.string().nullish(),
+      nextNodeIdFalse: zod.string().nullish(),
+      orderIndex: zod.number(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListFlowsResponse = zod.array(ListFlowsResponseItem);
+
+export const CreateFlowBody = zod.object({
+  name: zod.string(),
+  description: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+  nodes: zod
+    .array(
+      zod.object({
+        type: zod.string(),
+        label: zod.string().nullish(),
+        config: zod.object({}).passthrough(),
+        nextNodeRef: zod.string().nullish(),
+        nextNodeFalseRef: zod.string().nullish(),
+        ref: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+});
+
+export const GetFlowParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetFlowResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  startNodeId: zod.string().nullish(),
+  isActive: zod.boolean(),
+  nodes: zod.array(
+    zod.object({
+      id: zod.string(),
+      flowId: zod.string(),
+      type: zod.string(),
+      label: zod.string().nullish(),
+      config: zod.object({}).passthrough(),
+      nextNodeId: zod.string().nullish(),
+      nextNodeIdFalse: zod.string().nullish(),
+      orderIndex: zod.number(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const UpdateFlowParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateFlowBody = zod.object({
+  name: zod.string().optional(),
+  description: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+  nodes: zod
+    .array(
+      zod.object({
+        type: zod.string(),
+        label: zod.string().nullish(),
+        config: zod.object({}).passthrough(),
+        nextNodeRef: zod.string().nullish(),
+        nextNodeFalseRef: zod.string().nullish(),
+        ref: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+});
+
+export const UpdateFlowResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  channelId: zod.string().nullish(),
+  startNodeId: zod.string().nullish(),
+  isActive: zod.boolean(),
+  nodes: zod.array(
+    zod.object({
+      id: zod.string(),
+      flowId: zod.string(),
+      type: zod.string(),
+      label: zod.string().nullish(),
+      config: zod.object({}).passthrough(),
+      nextNodeId: zod.string().nullish(),
+      nextNodeIdFalse: zod.string().nullish(),
+      orderIndex: zod.number(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const DeleteFlowParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetFlowLogsForCallParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetFlowLogsForCallResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  callRecordId: zod.string(),
+  flowId: zod.string().nullish(),
+  nodeId: zod.string().nullish(),
+  nodeType: zod.string(),
+  nodeLabel: zod.string().nullish(),
+  branch: zod.string().nullish(),
+  ok: zod.boolean(),
+  message: zod.string().nullish(),
+  detail: zod.object({}).passthrough().nullish(),
+  stepIndex: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const GetFlowLogsForCallResponse = zod.array(
+  GetFlowLogsForCallResponseItem,
+);
+
+/**
+ * @summary Simulate an inbound call against a chosen channel and run the flow engine.
+ */
+export const SimulateCallWithFlowBody = zod.object({
+  channelId: zod.string().nullish(),
+  customerName: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  transcript: zod.string().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
 });

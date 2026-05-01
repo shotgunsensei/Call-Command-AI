@@ -15,6 +15,11 @@ import { requireIngestionToken } from "../middlewares/requireIngestionToken";
 import { requireAuth } from "../middlewares/requireAuth";
 import { processCallAudio } from "../services/aiAnalysis";
 import { evaluateAndExecuteRules, ensureDefaultRules } from "../services/rulesEngine";
+import {
+  executeFlowForCall,
+  resolveActiveFlowFor,
+} from "../services/flowEngine";
+import { resolveChannelForIngestion } from "./channels";
 import { getPlanInfo } from "../lib/plans";
 import { logger } from "../lib/logger";
 
@@ -25,6 +30,11 @@ interface IngestionInput {
   rawPayload: Record<string, unknown>;
   filename: string;
   callerPhone: string | null;
+  /**
+   * The inbound line that received the call (e.g. Twilio "To"). Used for
+   * channel routing — distinct from `callerPhone` (the caller's number).
+   */
+  lineNumber: string | null;
   customerName: string | null;
   fileUrl: string | null;
 }
@@ -89,6 +99,16 @@ async function ingestAndProcess(
     return { error: limitErr, status: 402, eventId: event?.id };
   }
 
+  // Resolve which channel this inbound call belongs to. Channel routing
+  // matches on the inbound LINE number (e.g. Twilio "To"), NOT the caller
+  // (Twilio "From") — multiple customers can call the same line and they
+  // all share that channel's flow. Falls back to the per-user default
+  // channel that we auto-seed.
+  const channel = await resolveChannelForIngestion({
+    userId,
+    phoneNumber: input.lineNumber,
+  });
+
   // Insert call record + ingestion event
   const [call] = await db
     .insert(callRecordsTable)
@@ -101,6 +121,7 @@ async function ingestAndProcess(
       status: "processing",
       keyPoints: [],
       suggestedTags: [],
+      channelId: channel.id,
     })
     .returning();
 
@@ -158,6 +179,22 @@ async function ingestAndProcess(
       } catch (err) {
         logger.warn({ err }, "Rule evaluation after ingestion failed");
       }
+      // Run the channel-bound flow after rules. Failures non-fatal.
+      try {
+        const flow = await resolveActiveFlowFor(userId, updated.channelId);
+        if (flow) {
+          const [latest] = await db
+            .select()
+            .from(callRecordsTable)
+            .where(eq(callRecordsTable.id, call!.id))
+            .limit(1);
+          if (latest) {
+            await executeFlowForCall({ userId, call: latest, flow });
+          }
+        }
+      } catch (err) {
+        logger.warn({ err }, "Flow execution after ingestion failed");
+      }
     }
   } catch (err) {
     logger.error({ err }, "Ingestion processing failed");
@@ -188,6 +225,10 @@ router.post(
         readString(body, "CallSid") ??
         makeFilename("twilio"),
       callerPhone: readString(body, "From") ?? readString(body, "Caller"),
+      // Twilio "To" / "Called" is the line that *received* the call —
+      // that's the channel selector. Without this we'd route by caller
+      // and break multi-line orchestration entirely.
+      lineNumber: readString(body, "To") ?? readString(body, "Called"),
       customerName: readString(body, "CallerName"),
       fileUrl: readString(body, "RecordingUrl"),
     });
@@ -214,6 +255,7 @@ router.post(
         readString(body, "messageId") ??
         makeFilename("email"),
       callerPhone: null,
+      lineNumber: readString(body, "to"),
       customerName: readString(body, "from"),
       fileUrl: readString(body, "attachmentUrl"),
     });
@@ -237,6 +279,10 @@ router.post(
       rawPayload: body,
       filename: readString(body, "label") ?? makeFilename("webhook"),
       callerPhone: readString(body, "callerPhone") ?? readString(body, "phone"),
+      lineNumber:
+        readString(body, "lineNumber") ??
+        readString(body, "to") ??
+        readString(body, "channelPhone"),
       customerName:
         readString(body, "customerName") ?? readString(body, "name"),
       fileUrl: readString(body, "fileUrl") ?? readString(body, "audioUrl"),
@@ -260,6 +306,7 @@ router.post(
       rawPayload: { simulated: true, ts: Date.now() },
       filename: makeFilename("demo-call"),
       callerPhone: null,
+      lineNumber: null,
       customerName: null,
       fileUrl: null,
     });

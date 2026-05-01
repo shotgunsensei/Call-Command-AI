@@ -8,7 +8,9 @@ import {
   useDeleteCall,
   useGetMe,
   useSendFollowup,
-  useRunRulesForCall
+  useRunRulesForCall,
+  useGetFlowLogsForCall,
+  useListChannels
 } from "@workspace/api-client-react";
 import { useRoute, useLocation } from "wouter";
 import { 
@@ -44,7 +46,11 @@ import {
   MessageSquare,
   FileText,
   Send,
-  Zap
+  Zap,
+  GitBranch,
+  CheckCircle2,
+  XCircle,
+  Radio
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -57,6 +63,8 @@ export default function CallDetail() {
   const { data: call, isLoading, refetch } = useGetCall(id);
   const { data: me } = useGetMe();
   const { data: integrations } = useListIntegrations();
+  const { data: flowLogs } = useGetFlowLogsForCall(id);
+  const { data: channels } = useListChannels();
   
   const processCall = useProcessCall();
   const updateActionItem = useUpdateActionItem();
@@ -325,6 +333,71 @@ export default function CallDetail() {
               <div className="bg-secondary/30 p-4 rounded-md max-h-[400px] overflow-y-auto border border-border/50 text-sm whitespace-pre-wrap font-mono">
                 {call.transcriptText || "No transcript available."}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card" data-testid="card-flow-trace">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <GitBranch className="h-5 w-5 mr-2 text-primary" />
+                Flow Execution Trace
+              </CardTitle>
+              <CardDescription>
+                Channel:{" "}
+                <span className="text-foreground">
+                  {channels?.find((c) => c.id === call.channelId)?.name ??
+                    "Unassigned"}
+                </span>
+                {(flowLogs?.length ?? 0) > 0 && (
+                  <> · {flowLogs!.length} step(s) executed</>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(flowLogs?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Radio className="h-4 w-4" />
+                  No flow ran for this call. Bind a flow to this call's channel
+                  on the Flows page, then reprocess.
+                </p>
+              ) : (
+                <ol className="space-y-2">
+                  {flowLogs!.map((log, i) => (
+                    <li
+                      key={log.id}
+                      className="border border-border/60 rounded-md bg-secondary/30 p-3 text-xs space-y-1"
+                      data-testid={`flow-log-${i}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">
+                          #{i + 1}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {log.nodeType}
+                        </Badge>
+                        {log.branch && (
+                          <Badge className="text-[10px] bg-primary/20 text-primary border-transparent">
+                            → {log.branch}
+                          </Badge>
+                        )}
+                        {log.ok ? (
+                          <CheckCircle2 className="h-3 w-3 text-green-500 ml-auto" />
+                        ) : (
+                          <XCircle className="h-3 w-3 text-destructive ml-auto" />
+                        )}
+                      </div>
+                      {log.nodeLabel && (
+                        <div className="text-foreground">{log.nodeLabel}</div>
+                      )}
+                      {log.message && (
+                        <div className="text-muted-foreground">
+                          {log.message}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
             </CardContent>
           </Card>
         </div>

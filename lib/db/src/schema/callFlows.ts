@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   pgTable,
   text,
@@ -9,19 +10,16 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const leadsTable = pgTable(
-  "leads",
+export const callFlowsTable = pgTable(
+  "call_flows",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: varchar("user_id", { length: 64 }).notNull(),
     name: text("name").notNull(),
-    phone: text("phone"),
-    company: text("company"),
-    intent: text("intent"),
-    status: text("status").notNull().default("new"),
-    linkedCallId: uuid("linked_call_id"),
-    createdByRuleId: uuid("created_by_rule_id"),
-    assignedUserId: varchar("assigned_user_id", { length: 64 }),
+    description: text("description"),
+    channelId: uuid("channel_id"),
+    startNodeId: uuid("start_node_id"),
+    isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -31,15 +29,15 @@ export const leadsTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => ({
-    userIdx: index("leads_user_idx").on(t.userId),
-    statusIdx: index("leads_status_idx").on(t.userId, t.status),
+    userIdx: index("call_flows_user_idx").on(t.userId),
+    channelIdx: index("call_flows_channel_idx").on(t.userId, t.channelId),
   }),
 );
 
-export const insertLeadSchema = createInsertSchema(leadsTable).omit({
+export const insertCallFlowSchema = createInsertSchema(callFlowsTable).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
-export type InsertLead = z.infer<typeof insertLeadSchema>;
-export type Lead = typeof leadsTable.$inferSelect;
+export type InsertCallFlow = z.infer<typeof insertCallFlowSchema>;
+export type CallFlow = typeof callFlowsTable.$inferSelect;

@@ -20,6 +20,7 @@ export const ticketsTable = pgTable(
     status: text("status").notNull().default("open"),
     linkedCallId: uuid("linked_call_id"),
     createdByRuleId: uuid("created_by_rule_id"),
+    assignedUserId: varchar("assigned_user_id", { length: 64 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

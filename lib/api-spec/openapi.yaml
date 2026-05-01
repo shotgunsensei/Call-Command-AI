@@ -691,6 +691,164 @@ paths:
               schema:
                 $ref: "#/components/schemas/Call"
 
+  /channels:
+    get:
+      operationId: listChannels
+      tags: [channels]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelList"
+    post:
+      operationId: createChannel
+      tags: [channels]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChannelBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+
+  /channels/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    patch:
+      operationId: updateChannel
+      tags: [channels]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChannelBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+    delete:
+      operationId: deleteChannel
+      tags: [channels]
+      responses:
+        "204": { description: Deleted }
+
+  /flows:
+    get:
+      operationId: listFlows
+      tags: [flows]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallFlowList"
+    post:
+      operationId: createFlow
+      tags: [flows]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCallFlowBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallFlow"
+
+  /flows/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getFlow
+      tags: [flows]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallFlow"
+    patch:
+      operationId: updateFlow
+      tags: [flows]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCallFlowBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallFlow"
+    delete:
+      operationId: deleteFlow
+      tags: [flows]
+      responses:
+        "204": { description: Deleted }
+
+  /calls/{id}/flow-logs:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getFlowLogsForCall
+      tags: [flows]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlowLogList"
+
+  /simulate-call:
+    post:
+      operationId: simulateCallWithFlow
+      tags: [flows]
+      summary: Simulate an inbound call against a chosen channel and run the flow engine.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulateCallBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlowExecutionResult"
+
 components:
   schemas:
     HealthStatus:
@@ -794,6 +952,8 @@ components:
           items: { type: string }
         isDemo: { type: string }
         errorMessage: { type: ["string", "null"] }
+        channelId: { type: ["string", "null"] }
+        assignedUserId: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         actionItems:
@@ -890,6 +1050,18 @@ components:
         newLeadsThisWeek: { type: integer }
         openTasks: { type: integer }
         angrySentimentAlerts: { type: integer }
+        activeChannels: { type: integer }
+        missedCalls: { type: integer }
+        escalations: { type: integer }
+        callsByChannel:
+          type: array
+          items:
+            type: object
+            properties:
+              channelId: { type: ["string", "null"] }
+              name: { type: string }
+              count: { type: integer }
+            required: [name, count]
         conversionFunnel:
           type: object
           properties:
@@ -916,6 +1088,10 @@ components:
           newLeadsThisWeek,
           openTasks,
           angrySentimentAlerts,
+          activeChannels,
+          missedCalls,
+          escalations,
+          callsByChannel,
           conversionFunnel,
           recentCalls,
           sentimentBreakdown,
@@ -1147,3 +1323,164 @@ components:
               message: { type: ["string", "null"] }
             required: [ruleId, ruleName, actionType, ok]
       required: [rulesEvaluated, rulesMatched, actionsExecuted, log]
+
+    Channel:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        type: { type: string }
+        defaultRoute: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        isDefault: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        [id, userId, name, type, isActive, isDefault, createdAt, updatedAt]
+
+    ChannelList:
+      type: array
+      items: { $ref: "#/components/schemas/Channel" }
+
+    CreateChannelBody:
+      type: object
+      properties:
+        name: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        type: { type: string }
+        defaultRoute: { type: ["string", "null"] }
+        isActive: { type: boolean }
+      required: [name, type]
+
+    UpdateChannelBody:
+      type: object
+      properties:
+        name: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        type: { type: string }
+        defaultRoute: { type: ["string", "null"] }
+        isActive: { type: boolean }
+
+    FlowNode:
+      type: object
+      properties:
+        id: { type: string }
+        flowId: { type: string }
+        type: { type: string }
+        label: { type: ["string", "null"] }
+        config: { type: object }
+        nextNodeId: { type: ["string", "null"] }
+        nextNodeIdFalse: { type: ["string", "null"] }
+        orderIndex: { type: integer }
+      required: [id, flowId, type, config, orderIndex]
+
+    CallFlow:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        channelId: { type: ["string", "null"] }
+        startNodeId: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        nodes:
+          type: array
+          items: { $ref: "#/components/schemas/FlowNode" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, userId, name, isActive, nodes, createdAt, updatedAt]
+
+    CallFlowList:
+      type: array
+      items: { $ref: "#/components/schemas/CallFlow" }
+
+    CreateCallFlowBody:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        channelId: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              label: { type: ["string", "null"] }
+              config: { type: object }
+              nextNodeRef: { type: ["string", "null"] }
+              nextNodeFalseRef: { type: ["string", "null"] }
+              ref: { type: ["string", "null"] }
+            required: [type, config]
+      required: [name]
+
+    UpdateCallFlowBody:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        channelId: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              label: { type: ["string", "null"] }
+              config: { type: object }
+              nextNodeRef: { type: ["string", "null"] }
+              nextNodeFalseRef: { type: ["string", "null"] }
+              ref: { type: ["string", "null"] }
+            required: [type, config]
+
+    FlowLog:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        callRecordId: { type: string }
+        flowId: { type: ["string", "null"] }
+        nodeId: { type: ["string", "null"] }
+        nodeType: { type: string }
+        nodeLabel: { type: ["string", "null"] }
+        branch: { type: ["string", "null"] }
+        ok: { type: boolean }
+        message: { type: ["string", "null"] }
+        detail: { type: ["object", "null"] }
+        stepIndex: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+      required: [id, userId, callRecordId, nodeType, ok, createdAt]
+
+    FlowLogList:
+      type: array
+      items: { $ref: "#/components/schemas/FlowLog" }
+
+    SimulateCallBody:
+      type: object
+      properties:
+        channelId: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        callerPhone: { type: ["string", "null"] }
+        transcript: { type: ["string", "null"] }
+        intent: { type: ["string", "null"] }
+        priority: { type: ["string", "null"] }
+        sentiment: { type: ["string", "null"] }
+
+    FlowExecutionResult:
+      type: object
+      properties:
+        callId: { type: string }
+        flowId: { type: ["string", "null"] }
+        flowName: { type: ["string", "null"] }
+        nodesExecuted: { type: integer }
+        actionsExecuted: { type: integer }
+        endedAt: { type: ["string", "null"] }
+        log:
+          type: array
+          items: { $ref: "#/components/schemas/FlowLog" }
+      required: [callId, nodesExecuted, actionsExecuted, log]
