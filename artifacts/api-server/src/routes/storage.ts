@@ -6,18 +6,26 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { requireAuth } from "../middlewares/requireAuth";
-import { db, callRecordsTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import {
+  db,
+  callRecordsTable,
+  uploadIntentsTable,
+} from "@workspace/db";
+import { and, eq, lt, or } from "drizzle-orm";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
+// Upload intents expire after 24 hours by default.
+const UPLOAD_INTENT_TTL_MS = 24 * 60 * 60 * 1000;
+
 /**
  * POST /storage/uploads/request-url
  *
- * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
+ * Request a presigned URL for file upload. Before the URL is issued we record
+ * an `upload_intents` row that binds the (soon-to-exist) object path to the
+ * authenticated user. Subsequent calls must reference an intent that the same
+ * user owns and that has not expired.
  */
 router.post(
   "/storage/uploads/request-url",
@@ -30,8 +38,21 @@ router.post(
     }
 
     try {
+      const userId = req.userId!;
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+      const expiresAt = new Date(Date.now() + UPLOAD_INTENT_TTL_MS);
+      await db.insert(uploadIntentsTable).values({
+        userId,
+        workspaceId: null,
+        objectPath,
+        originalFilename: parsed.data.name,
+        mimeType: parsed.data.contentType,
+        maxSizeBytes: parsed.data.size,
+        status: "pending",
+        expiresAt,
+      });
 
       res.json(
         RequestUploadUrlResponse.parse({
@@ -83,9 +104,11 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
 /**
  * GET /storage/objects/*
  *
- * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
+ * Serve object entities from PRIVATE_OBJECT_DIR. Access is granted when the
+ * caller either (a) owns a non-expired upload intent for the object path, or
+ * (b) owns a call_record whose fileUrl matches the object path. The intent
+ * check covers freshly uploaded files; the call_record check covers files
+ * already attached to a call.
  */
 router.get(
   "/storage/objects/*path",
@@ -95,10 +118,9 @@ router.get(
       const raw = req.params.path;
       const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
       const objectPath = `/objects/${wildcardPath}`;
-
-      // ACL: only the user who owns a call_record pointing at this path may read it.
       const userId = req.userId!;
-      const [owned] = await db
+
+      const [callOwned] = await db
         .select({ id: callRecordsTable.id })
         .from(callRecordsTable)
         .where(
@@ -108,7 +130,33 @@ router.get(
           ),
         )
         .limit(1);
-      if (!owned) {
+
+      let allowed = Boolean(callOwned);
+      if (!allowed) {
+        const [intent] = await db
+          .select({
+            id: uploadIntentsTable.id,
+            status: uploadIntentsTable.status,
+            expiresAt: uploadIntentsTable.expiresAt,
+          })
+          .from(uploadIntentsTable)
+          .where(
+            and(
+              eq(uploadIntentsTable.userId, userId),
+              eq(uploadIntentsTable.objectPath, objectPath),
+            ),
+          )
+          .limit(1);
+        if (
+          intent &&
+          intent.status !== "expired" &&
+          intent.expiresAt.getTime() > Date.now()
+        ) {
+          allowed = true;
+        }
+      }
+
+      if (!allowed) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
@@ -136,5 +184,27 @@ router.get(
     }
   },
 );
+
+/**
+ * Mark intents whose `expires_at` has passed as `expired`. Best-effort
+ * housekeeping — safe to call repeatedly. Returns the number of rows touched.
+ */
+export async function expireStaleUploadIntents(): Promise<number> {
+  const now = new Date();
+  const updated = await db
+    .update(uploadIntentsTable)
+    .set({ status: "expired" })
+    .where(
+      and(
+        lt(uploadIntentsTable.expiresAt, now),
+        or(
+          eq(uploadIntentsTable.status, "pending"),
+          eq(uploadIntentsTable.status, "uploaded"),
+        )!,
+      ),
+    )
+    .returning({ id: uploadIntentsTable.id });
+  return updated.length;
+}
 
 export default router;

@@ -96,3 +96,57 @@ Front-end / back-end alignment fixes for the MVP audit:
 - Sidebar active-state no longer double-highlights `/calls` for `/calls/new`.
 - Sign-out (Settings + Layout dropdowns) redirects to `/` instead of
   leaving the user on an authenticated page that hangs on a loader.
+
+## 2026-05-01 Launch hardening
+
+Two post-MVP hardening items from the audit are now in place.
+
+### upload_intents table
+
+New table `upload_intents` (`id uuid pk`, `user_id varchar(64)`,
+`workspace_id varchar(64) null`, `object_path text unique`,
+`original_filename`, `mime_type`, `max_size_bytes bigint`,
+`status pending|uploaded|attached|expired`, `created_at`, `expires_at`,
+indexes on `user_id` and `status`).
+
+- `POST /api/storage/uploads/request-url` now creates a `pending` intent
+  (24h TTL) bound to the authenticated user before returning the upload URL.
+- `POST /api/calls` runs the claim and the `call_records` insert inside a
+  single `db.transaction`. The claim is an atomic conditional
+  `UPDATE … RETURNING` (helper: `claimUploadIntent` in
+  `lib/db/src/uploadIntents.ts`) that flips the intent to `attached` only
+  when the row belongs to the caller, is in `pending`/`uploaded`, and has
+  not expired. Two concurrent attach attempts for the same `object_path`
+  race on this UPDATE — exactly one wins; the other receives
+  `already_attached`. Status codes: 403 / 410 / 409. If the call insert
+  fails (or the process dies mid-transaction) the claim is rolled back, so
+  the user can retry without being permanently stuck on 409.
+- The `status` column has a Postgres CHECK constraint
+  (`pending|uploaded|attached|expired`) so application bugs cannot write an
+  invalid state.
+- `GET /api/storage/objects/*` allows downloads when either (a) the caller
+  owns a `call_records` row whose `file_url` matches, or (b) the caller owns
+  a non-expired upload intent for that path. (b) covers the brief window
+  between upload and `POST /api/calls`.
+- `expireStaleUploadIntents()` helper marks past-due `pending`/`uploaded`
+  intents as `expired`; safe to call from any housekeeping path.
+
+### Legacy file URL migration
+
+`scripts/src/normalizeCallFileUrls.ts` rewrites legacy
+`call_records.file_url` values into the canonical `/objects/<id>` form.
+
+- Skips already-canonical rows and NULL/empty values.
+- Logs (does not delete) anything it cannot recognise.
+- Idempotent — safe to re-run.
+- Run with: `pnpm --filter @workspace/scripts run normalize-call-file-urls`
+  (append `-- --dry-run` to preview).
+
+### Smoke checks
+
+`pnpm --filter @workspace/scripts run test:upload-hardening` exercises the
+same `claimUploadIntent` helper that the production route calls — so a
+regression in the attach-guard is a smoke failure. Six checks: unauth 401,
+intent persists as `pending`, cross-user denial, expired denial, valid claim
+(and `already_attached` on re-claim), and an 8-trial concurrent-claim race
+that asserts exactly one of two parallel attach attempts wins.

@@ -19,6 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { claimUploadIntent } from "@workspace/db";
 import { processCallAudio, streamToBuffer } from "../services/aiAnalysis";
 import { streamCallPdf } from "../services/pdf";
 import { getPlanInfo } from "../lib/plans";
@@ -271,22 +272,60 @@ router.post(
       return;
     }
 
-    const [call] = await db
-      .insert(callRecordsTable)
-      .values({
+    // Atomically claim the upload intent and insert the call record in a
+    // single transaction. Concurrent attach attempts for the same
+    // object_path race on the conditional UPDATE inside `claimUploadIntent`
+    // — only one wins. If the call_records insert fails (or the process
+    // crashes mid-transaction) the claim is rolled back automatically.
+    type AttachOk = { kind: "ok"; call: typeof callRecordsTable.$inferSelect };
+    type AttachFail = {
+      kind: "fail";
+      reason: "missing_or_wrong_owner" | "expired" | "already_attached";
+    };
+    const attached: AttachOk | AttachFail = await db.transaction(async (tx) => {
+      const claim = await claimUploadIntent({
         userId,
-        originalFilename: parsed.data.originalFilename,
-        fileUrl: objectPath,
-        status: "processing",
-        keyPoints: [],
-        suggestedTags: [],
-      })
-      .returning();
+        objectPath,
+        executor: tx,
+      });
+      if (!claim.ok) {
+        return { kind: "fail", reason: claim.reason };
+      }
+      const [row] = await tx
+        .insert(callRecordsTable)
+        .values({
+          userId,
+          originalFilename: parsed.data.originalFilename,
+          fileUrl: objectPath,
+          status: "processing",
+          keyPoints: [],
+          suggestedTags: [],
+        })
+        .returning();
+      if (!row) {
+        // Force a rollback so the claim doesn't persist.
+        throw new Error("call_records insert returned no row");
+      }
+      return { kind: "ok", call: row };
+    });
 
-    if (!call) {
-      res.status(500).json({ error: "Failed to create call" });
+    if (attached.kind === "fail") {
+      const status =
+        attached.reason === "missing_or_wrong_owner"
+          ? 403
+          : attached.reason === "expired"
+            ? 410
+            : 409;
+      const message =
+        attached.reason === "missing_or_wrong_owner"
+          ? "Upload not authorized for this user"
+          : attached.reason === "expired"
+            ? "Upload intent expired"
+            : "Upload already attached to a call";
+      res.status(status).json({ error: message });
       return;
     }
+    const call = attached.call;
 
     // Process inline (small audio files in this app); errors are caught and
     // surfaced via demo fallback inside processCallAudio.
