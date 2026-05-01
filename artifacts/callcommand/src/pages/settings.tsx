@@ -1,5 +1,6 @@
 import { useGetMe } from "@workspace/api-client-react";
 import { useClerk } from "@clerk/react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +10,7 @@ import { LogOut, User, Mail, Shield } from "lucide-react";
 export default function Settings() {
   const { data: me, isLoading } = useGetMe();
   const { signOut } = useClerk();
+  const [, setLocation] = useLocation();
 
   if (isLoading || !me) {
     return (
@@ -63,7 +65,7 @@ export default function Settings() {
 
           <div className="pt-6 border-t border-border mt-6">
             <h4 className="text-sm font-medium mb-4 uppercase text-muted-foreground tracking-wider">Account Actions</h4>
-            <Button variant="destructive" onClick={() => signOut()}>
+            <Button variant="destructive" onClick={() => signOut(() => setLocation("/"))}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out of HQ
             </Button>

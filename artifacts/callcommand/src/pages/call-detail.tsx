@@ -95,7 +95,7 @@ export default function CallDetail() {
 
   const handleToggleAction = async (itemId: string, currentStatus: string) => {
     try {
-      const newStatus = currentStatus === "completed" ? "open" : "completed";
+      const newStatus = currentStatus === "done" ? "open" : "done";
       await updateActionItem.mutateAsync({ 
         id: itemId, 
         data: { status: newStatus } 
@@ -180,7 +180,7 @@ export default function CallDetail() {
           <span>Analysis is currently processing. This may take a moment.</span>
         </div>
       )}
-      {call.status === "failed" && (
+      {call.status === "error" && (
         <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-lg flex items-center">
           <AlertTriangle className="h-5 w-5 mr-3" />
           <span>Analysis failed: {call.errorMessage || "Unknown error"}</span>
@@ -287,14 +287,14 @@ export default function CallDetail() {
               {call.actionItems && call.actionItems.length > 0 ? (
                 <div className="space-y-4">
                   {call.actionItems.map(item => (
-                    <div key={item.id} className={`flex items-start space-x-3 p-3 rounded-lg border ${item.status === 'completed' ? 'border-border/50 bg-secondary/20 opacity-60' : 'border-border bg-background'}`}>
+                    <div key={item.id} className={`flex items-start space-x-3 p-3 rounded-lg border ${item.status === 'done' ? 'border-border/50 bg-secondary/20 opacity-60' : 'border-border bg-background'}`}>
                       <Checkbox 
-                        checked={item.status === "completed"} 
+                        checked={item.status === "done"} 
                         onCheckedChange={() => handleToggleAction(item.id, item.status)}
                         className="mt-1"
                       />
                       <div className="flex-1 space-y-1">
-                        <p className={`text-sm font-medium leading-none ${item.status === 'completed' ? 'line-through' : ''}`}>
+                        <p className={`text-sm font-medium leading-none ${item.status === 'done' ? 'line-through' : ''}`}>
                           {item.title}
                         </p>
                         {item.description && (

@@ -15,13 +15,15 @@ export default function Billing() {
       const res = await createCheckout.mutateAsync({ data: { plan } });
       if (res.url) {
         window.location.href = res.url;
-      } else if (!res.configured) {
-        toast({
-          title: "Payment Configuration",
-          description: res.message || "Payments are not currently configured for this deployment.",
-          duration: 6000
-        });
+        return;
       }
+      toast({
+        title: res.configured ? "Checkout Unavailable" : "Payment Configuration",
+        description:
+          res.message ||
+          "Payments are not currently configured for this deployment.",
+        duration: 6000,
+      });
     } catch (err: any) {
       toast({ title: "Checkout Failed", description: err.message, variant: "destructive" });
     }

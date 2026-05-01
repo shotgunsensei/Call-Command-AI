@@ -54,10 +54,17 @@ export default function Calls() {
   };
 
   const getStatusColor = (s: string) => {
-    if (s === 'completed') return 'bg-green-500/20 text-green-500 border-transparent';
+    if (s === 'ready') return 'bg-green-500/20 text-green-500 border-transparent';
     if (s === 'processing') return 'bg-blue-500/20 text-blue-500 border-transparent';
-    if (s === 'failed') return 'bg-destructive/20 text-destructive border-transparent';
+    if (s === 'error') return 'bg-destructive/20 text-destructive border-transparent';
     return 'bg-secondary text-secondary-foreground border-transparent';
+  };
+
+  const getStatusLabel = (s: string) => {
+    if (s === 'ready') return 'Completed';
+    if (s === 'processing') return 'Processing';
+    if (s === 'error') return 'Failed';
+    return s;
   };
 
   return (
@@ -95,9 +102,9 @@ export default function Calls() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="ready">Completed</SelectItem>
                   <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="error">Failed</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={priority} onValueChange={setPriority}>
@@ -144,7 +151,7 @@ export default function Calls() {
                           )}
                         </h3>
                         <Badge className={getStatusColor(call.status)}>
-                          {call.status}
+                          {getStatusLabel(call.status)}
                         </Badge>
                         {call.priority && (
                           <Badge className={getPriorityColor(call.priority)}>

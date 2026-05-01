@@ -79,3 +79,20 @@ Production app that turns phone-call recordings into structured intelligence.
   status (`open`/`in_progress`/`done`).
 - `integrations` — userId, type (`crm`/`zapier`/`make`/`webhook`/`slack`),
   name, webhookUrl, enabled.
+
+## 2026-05-01 Audit Pass
+
+Front-end / back-end alignment fixes for the MVP audit:
+- Calls list filter and badges now use the real status enum
+  (`processing`/`ready`/`error`) and render friendly labels
+  (Processing / Completed / Failed).
+- Call detail page checks `status === "error"` and toggles action items
+  between `open` and `done` (matches `stats.ts` open-count query).
+- `POST /api/storage/uploads/request-url` and `GET /api/storage/objects/*`
+  now require Clerk auth. Downloads additionally require the caller to own a
+  `call_records` row whose `fileUrl` matches the requested object path.
+- Billing page always toasts when checkout returns no URL (previously
+  silent when Stripe was "configured" but checkout was unavailable).
+- Sidebar active-state no longer double-highlights `/calls` for `/calls/new`.
+- Sign-out (Settings + Layout dropdowns) redirects to `/` instead of
+  leaving the user on an authenticated page that hangs on a loader.

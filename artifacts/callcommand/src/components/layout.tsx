@@ -47,7 +47,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <div className="flex flex-col space-y-1 mt-6">
       {NAV_ITEMS.map((item) => {
-        const isActive = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+        // "/calls" should highlight for /calls and /calls/:id but NOT for /calls/new
+        // (which has its own nav item). All other items just exact-match.
+        const isActive =
+          location === item.href ||
+          (item.href === "/calls" &&
+            location.startsWith("/calls/") &&
+            location !== "/calls/new");
         return (
           <Link key={item.href} href={item.href} onClick={onClick}>
             <div
@@ -100,7 +106,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <SettingsIcon className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => signOut()}>
+              <DropdownMenuItem onClick={() => signOut(() => setLocation("/"))}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sign out</span>
               </DropdownMenuItem>
@@ -131,7 +137,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setLocation("/settings")}>Settings</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => signOut(() => setLocation("/"))}>Sign out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
