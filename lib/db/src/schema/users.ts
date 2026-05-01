@@ -1,8 +1,16 @@
-import { pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const usersTable = pgTable("users", {
+export const usersTable = pgTable(
+  "users",
+  {
   id: varchar("id", { length: 64 }).primaryKey(),
   email: text("email").notNull(),
   name: text("name"),
@@ -10,6 +18,7 @@ export const usersTable = pgTable("users", {
   plan: text("plan").notNull().default("free"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  ingestionTokenHash: text("ingestion_token_hash"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -17,7 +26,13 @@ export const usersTable = pgTable("users", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
-});
+  },
+  (table) => ({
+    ingestionTokenHashIdx: uniqueIndex("users_ingestion_token_hash_idx").on(
+      table.ingestionTokenHash,
+    ),
+  }),
+);
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({
   createdAt: true,

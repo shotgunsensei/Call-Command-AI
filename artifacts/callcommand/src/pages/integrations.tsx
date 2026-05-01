@@ -4,7 +4,9 @@ import {
   useCreateIntegration, 
   useUpdateIntegration, 
   useDeleteIntegration, 
-  useTestIntegration 
+  useTestIntegration,
+  useGetIngestionToken,
+  useRotateIngestionToken
 } from "@workspace/api-client-react";
 import { 
   Card, 
@@ -30,7 +32,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Cable, Plus, Trash2, Activity, Play, CheckCircle2, AlertCircle } from "lucide-react";
+import { Cable, Plus, Trash2, Play, KeyRound, RefreshCcw, Copy, Inbox } from "lucide-react";
 
 export default function Integrations() {
   const { data: integrations, isLoading, refetch } = useListIntegrations();
@@ -38,7 +40,41 @@ export default function Integrations() {
   const updateIntegration = useUpdateIntegration();
   const deleteIntegration = useDeleteIntegration();
   const testIntegration = useTestIntegration();
+  const { data: tokenData, refetch: refetchToken } = useGetIngestionToken();
+  const rotateToken = useRotateIngestionToken();
   const { toast } = useToast();
+  // Raw token is only visible once, immediately after rotation. After that
+  // the server only retains a SHA-256 hash so we cannot show it again.
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
+
+  const handleRotate = async () => {
+    if (
+      tokenData?.hasToken &&
+      !confirm(
+        "Rotating will revoke your current token immediately. Existing webhooks will need to be updated, and the new token will only be shown once. Continue?",
+      )
+    )
+      return;
+    const res = await rotateToken.mutateAsync();
+    setRevealedToken(res?.token ?? null);
+    refetchToken();
+    toast({
+      title: "Token generated",
+      description: "Copy it now — it won't be shown again.",
+    });
+  };
+
+  const copy = async (s: string) => {
+    try {
+      await navigator.clipboard.writeText(s);
+      toast({ title: "Copied" });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
+  };
+
+  const baseUrl =
+    typeof window !== "undefined" ? window.location.origin : "";
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newType, setNewType] = useState("webhook");
@@ -178,6 +214,99 @@ export default function Integrations() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <Card className="bg-card" data-testid="card-ingestion">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Inbox className="h-4 w-4 text-primary" /> Inbound ingestion
+          </CardTitle>
+          <CardDescription>
+            Send call records into CallCommand AI from Twilio, email, or any
+            HTTP source. Authenticate with your ingestion token as{" "}
+            <code>Authorization: Bearer &lt;token&gt;</code>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <KeyRound className="h-4 w-4 text-muted-foreground" />
+            <code
+              className="text-xs bg-secondary/40 rounded px-2 py-1 font-mono break-all"
+              data-testid="text-ingestion-token"
+            >
+              {revealedToken
+                ? revealedToken
+                : tokenData?.hasToken
+                  ? "•••••••• (hidden — rotate to reveal a new token)"
+                  : "no token yet"}
+            </code>
+            {revealedToken && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => copy(revealedToken)}
+                data-testid="button-copy-token"
+              >
+                <Copy className="h-3 w-3 mr-1" /> Copy
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRotate}
+              disabled={rotateToken.isPending}
+              data-testid="button-rotate-token"
+            >
+              <RefreshCcw className="h-3 w-3 mr-1" />
+              {tokenData?.hasToken ? "Rotate" : "Generate"}
+            </Button>
+          </div>
+          {revealedToken && (
+            <p
+              className="text-xs text-amber-500"
+              data-testid="text-token-warning"
+            >
+              Save this token now — for security it is only shown once. We
+              store a hash and cannot recover the raw value later.
+            </p>
+          )}
+          {tokenData?.endpoints && (
+            <div className="grid gap-2 text-xs">
+              {(["twilio", "email", "webhook"] as const).map((k) => {
+                const url = `${baseUrl}${tokenData.endpoints[k]}`;
+                return (
+                  <div
+                    key={k}
+                    className="flex items-center gap-2 bg-secondary/30 rounded px-2 py-1"
+                  >
+                    <Badge variant="secondary" className="uppercase">
+                      {k}
+                    </Badge>
+                    <code className="font-mono text-[11px] truncate flex-1">
+                      POST {url}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copy(url)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div>
+        <h2 className="text-xl font-semibold mt-2 mb-3">Outbound webhooks</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Forward analyzed calls to Slack, Zapier, your CRM, or any HTTPS
+          endpoint. Reference these from automation rules with the{" "}
+          <code>send_webhook</code> action.
+        </p>
       </div>
 
       <div className="grid gap-4">

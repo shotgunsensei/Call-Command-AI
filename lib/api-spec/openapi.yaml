@@ -22,6 +22,18 @@ tags:
     description: Dashboard stats
   - name: billing
     description: Billing & plans
+  - name: automation
+    description: Automation rules
+  - name: tickets
+    description: Tickets created from calls
+  - name: leads
+    description: Leads created from calls
+  - name: tasks
+    description: Tasks created from calls
+  - name: followups
+    description: Follow-up messages
+  - name: ingestion
+    description: External ingestion sources
 paths:
   /healthz:
     get:
@@ -361,6 +373,324 @@ paths:
               schema:
                 $ref: "#/components/schemas/BillingPlan"
 
+  /me/ingestion-token:
+    get:
+      operationId: getIngestionToken
+      tags: [ingestion]
+      summary: Get the current user's ingestion token (for external webhooks)
+      responses:
+        "200":
+          description: Token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionTokenResponse"
+    post:
+      operationId: rotateIngestionToken
+      tags: [ingestion]
+      summary: Rotate (regenerate) the ingestion token
+      responses:
+        "200":
+          description: New token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionTokenResponse"
+
+  /automation-rules:
+    get:
+      operationId: listAutomationRules
+      tags: [automation]
+      summary: List automation rules
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationRuleList"
+    post:
+      operationId: createAutomationRule
+      tags: [automation]
+      summary: Create a new automation rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAutomationRuleBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationRule"
+
+  /automation-rules/{id}:
+    patch:
+      operationId: updateAutomationRule
+      tags: [automation]
+      summary: Update a rule
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAutomationRuleBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationRule"
+    delete:
+      operationId: deleteAutomationRule
+      tags: [automation]
+      summary: Delete a rule
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /tickets:
+    get:
+      operationId: listTickets
+      tags: [tickets]
+      summary: List tickets
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketList"
+
+  /tickets/{id}:
+    patch:
+      operationId: updateTicket
+      tags: [tickets]
+      summary: Update a ticket
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTicketBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+    delete:
+      operationId: deleteTicket
+      tags: [tickets]
+      summary: Delete a ticket
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /leads:
+    get:
+      operationId: listLeads
+      tags: [leads]
+      summary: List leads
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadList"
+
+  /leads/{id}:
+    patch:
+      operationId: updateLead
+      tags: [leads]
+      summary: Update a lead
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeadBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+    delete:
+      operationId: deleteLead
+      tags: [leads]
+      summary: Delete a lead
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskList"
+
+  /tasks/{id}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /follow-ups:
+    get:
+      operationId: listFollowups
+      tags: [followups]
+      summary: List sent follow-ups
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowupList"
+
+  /calls/{id}/follow-up:
+    post:
+      operationId: sendFollowup
+      tags: [followups]
+      summary: Send a follow-up message for a call (simulated email)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendFollowupBody"
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Followup"
+
+  /calls/{id}/run-rules:
+    post:
+      operationId: runRulesForCall
+      tags: [automation]
+      summary: Re-run automation rules against a single call
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuleExecutionResult"
+
+  /ingestion-events:
+    get:
+      operationId: listIngestionEvents
+      tags: [ingestion]
+      summary: List recent ingestion events
+      responses:
+        "200":
+          description: List
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionEventList"
+
+  /demo/simulate-call:
+    post:
+      operationId: simulateInboundCall
+      tags: [ingestion]
+      summary: Simulate an inbound call event (for demo / no integrations setup)
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+
 components:
   schemas:
     HealthStatus:
@@ -556,6 +886,17 @@ components:
         callsThisMonth: { type: integer }
         openActionItems: { type: integer }
         highPriorityCalls: { type: integer }
+        openTickets: { type: integer }
+        newLeadsThisWeek: { type: integer }
+        openTasks: { type: integer }
+        angrySentimentAlerts: { type: integer }
+        conversionFunnel:
+          type: object
+          properties:
+            calls: { type: integer }
+            leads: { type: integer }
+            closedLeads: { type: integer }
+          required: [calls, leads, closedLeads]
         recentCalls:
           type: array
           items: { $ref: "#/components/schemas/Call" }
@@ -571,6 +912,11 @@ components:
           callsThisMonth,
           openActionItems,
           highPriorityCalls,
+          openTickets,
+          newLeadsThisWeek,
+          openTasks,
+          angrySentimentAlerts,
+          conversionFunnel,
           recentCalls,
           sentimentBreakdown,
           topTags,
@@ -598,3 +944,206 @@ components:
         monthlyLimit: { type: integer }
         stripeConfigured: { type: boolean }
       required: [plan, callsThisMonth, monthlyLimit, stripeConfigured]
+
+    IngestionTokenResponse:
+      type: object
+      properties:
+        # Raw token. Only populated immediately after rotation (POST) — the
+        # server only stores a SHA-256 hash, so subsequent GETs return null.
+        token: { type: ["string", "null"] }
+        hasToken: { type: boolean }
+        endpoints:
+          type: object
+          properties:
+            twilio: { type: string }
+            email: { type: string }
+            webhook: { type: string }
+          required: [twilio, email, webhook]
+      required: [token, hasToken, endpoints]
+
+    AutomationRule:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        triggerType: { type: string }
+        conditions: { type: object }
+        actions:
+          type: array
+          items: { type: object }
+        enabled: { type: boolean }
+        isDefault: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        [id, userId, name, triggerType, conditions, actions, enabled, isDefault, createdAt, updatedAt]
+
+    AutomationRuleList:
+      type: array
+      items: { $ref: "#/components/schemas/AutomationRule" }
+
+    CreateAutomationRuleBody:
+      type: object
+      properties:
+        name: { type: string }
+        triggerType: { type: string }
+        conditions: { type: object }
+        actions:
+          type: array
+          items: { type: object }
+        enabled: { type: boolean }
+      required: [name, conditions, actions]
+
+    UpdateAutomationRuleBody:
+      type: object
+      properties:
+        name: { type: string }
+        conditions: { type: object }
+        actions:
+          type: array
+          items: { type: object }
+        enabled: { type: boolean }
+
+    Ticket:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        priority: { type: string }
+        status: { type: string }
+        linkedCallId: { type: ["string", "null"] }
+        createdByRuleId: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, userId, title, priority, status, createdAt, updatedAt]
+
+    TicketList:
+      type: array
+      items: { $ref: "#/components/schemas/Ticket" }
+
+    UpdateTicketBody:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        priority: { type: string }
+        status: { type: string }
+
+    Lead:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        phone: { type: ["string", "null"] }
+        company: { type: ["string", "null"] }
+        intent: { type: ["string", "null"] }
+        status: { type: string }
+        linkedCallId: { type: ["string", "null"] }
+        createdByRuleId: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, userId, name, status, createdAt, updatedAt]
+
+    LeadList:
+      type: array
+      items: { $ref: "#/components/schemas/Lead" }
+
+    UpdateLeadBody:
+      type: object
+      properties:
+        name: { type: string }
+        phone: { type: ["string", "null"] }
+        company: { type: ["string", "null"] }
+        intent: { type: ["string", "null"] }
+        status: { type: string }
+
+    Task:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        dueDate: { type: ["string", "null"], format: date-time }
+        status: { type: string }
+        linkedCallId: { type: ["string", "null"] }
+        createdByRuleId: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, userId, title, status, createdAt, updatedAt]
+
+    TaskList:
+      type: array
+      items: { $ref: "#/components/schemas/Task" }
+
+    UpdateTaskBody:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        dueDate: { type: ["string", "null"], format: date-time }
+        status: { type: string }
+
+    Followup:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        callRecordId: { type: string }
+        channel: { type: string }
+        recipient: { type: ["string", "null"] }
+        subject: { type: ["string", "null"] }
+        message: { type: string }
+        status: { type: string }
+        sentAt: { type: string, format: date-time }
+      required: [id, userId, callRecordId, channel, message, status, sentAt]
+
+    FollowupList:
+      type: array
+      items: { $ref: "#/components/schemas/Followup" }
+
+    SendFollowupBody:
+      type: object
+      properties:
+        message: { type: ["string", "null"] }
+        recipient: { type: ["string", "null"] }
+        subject: { type: ["string", "null"] }
+
+    IngestionEvent:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        source: { type: string }
+        callRecordId: { type: ["string", "null"] }
+        status: { type: string }
+        errorMessage: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+      required: [id, userId, source, status, createdAt]
+
+    IngestionEventList:
+      type: array
+      items: { $ref: "#/components/schemas/IngestionEvent" }
+
+    RuleExecutionResult:
+      type: object
+      properties:
+        rulesEvaluated: { type: integer }
+        rulesMatched: { type: integer }
+        actionsExecuted: { type: integer }
+        log:
+          type: array
+          items:
+            type: object
+            properties:
+              ruleId: { type: string }
+              ruleName: { type: string }
+              actionType: { type: string }
+              ok: { type: boolean }
+              message: { type: ["string", "null"] }
+            required: [ruleId, ruleName, actionType, ok]
+      required: [rulesEvaluated, rulesMatched, actionsExecuted, log]

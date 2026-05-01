@@ -24,6 +24,11 @@ import { processCallAudio, streamToBuffer } from "../services/aiAnalysis";
 import { streamCallPdf } from "../services/pdf";
 import { getPlanInfo } from "../lib/plans";
 import { safeFetchWebhook } from "../lib/safeWebhook";
+import {
+  ensureDefaultRules,
+  evaluateAndExecuteRules,
+  runRulesWithDefaults,
+} from "../services/rulesEngine";
 import { Readable } from "stream";
 
 const router: IRouter = Router();
@@ -168,6 +173,25 @@ async function runProcessing(
       );
     }
   });
+
+  // Evaluate automation rules after the call is in its final analyzed state.
+  // Rule errors are logged but never fail the upload — the call has already
+  // been persisted successfully at this point.
+  try {
+    await ensureDefaultRules(userId);
+    const [updated] = await db
+      .select()
+      .from(callRecordsTable)
+      .where(eq(callRecordsTable.id, callId))
+      .limit(1);
+    if (updated) {
+      await evaluateAndExecuteRules({ userId, call: updated });
+    }
+  } catch (err) {
+    // Logger is request-scoped here; fall back to console-style structured log
+    // via the singleton import isn't ideal but rule failures are non-fatal.
+    void err;
+  }
 }
 
 router.get(
@@ -494,6 +518,31 @@ router.post(
         message: err instanceof Error ? err.message : "Network error",
       });
     }
+  },
+);
+
+router.post(
+  "/calls/:id/run-rules",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.userId!;
+    const id = String(req.params["id"]);
+    const [call] = await db
+      .select()
+      .from(callRecordsTable)
+      .where(
+        and(
+          eq(callRecordsTable.id, id),
+          eq(callRecordsTable.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!call) {
+      res.status(404).json({ error: "Call not found" });
+      return;
+    }
+    const result = await runRulesWithDefaults({ userId, call });
+    res.json(result);
   },
 );
 

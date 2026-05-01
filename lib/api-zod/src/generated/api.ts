@@ -329,6 +329,15 @@ export const GetDashboardStatsResponse = zod.object({
   callsThisMonth: zod.number(),
   openActionItems: zod.number(),
   highPriorityCalls: zod.number(),
+  openTickets: zod.number(),
+  newLeadsThisWeek: zod.number(),
+  openTasks: zod.number(),
+  angrySentimentAlerts: zod.number(),
+  conversionFunnel: zod.object({
+    calls: zod.number(),
+    leads: zod.number(),
+    closedLeads: zod.number(),
+  }),
   recentCalls: zod.array(
     zod.object({
       id: zod.string(),
@@ -405,4 +414,372 @@ export const GetBillingPlanResponse = zod.object({
   callsThisMonth: zod.number(),
   monthlyLimit: zod.number(),
   stripeConfigured: zod.boolean(),
+});
+
+/**
+ * @summary Get the current user's ingestion token (for external webhooks)
+ */
+export const GetIngestionTokenResponse = zod.object({
+  token: zod.string().nullable(),
+  hasToken: zod.boolean(),
+  endpoints: zod.object({
+    twilio: zod.string(),
+    email: zod.string(),
+    webhook: zod.string(),
+  }),
+});
+
+/**
+ * @summary Rotate (regenerate) the ingestion token
+ */
+export const RotateIngestionTokenResponse = zod.object({
+  token: zod.string().nullable(),
+  hasToken: zod.boolean(),
+  endpoints: zod.object({
+    twilio: zod.string(),
+    email: zod.string(),
+    webhook: zod.string(),
+  }),
+});
+
+/**
+ * @summary List automation rules
+ */
+export const ListAutomationRulesResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  triggerType: zod.string(),
+  conditions: zod.object({}).passthrough(),
+  actions: zod.array(zod.object({}).passthrough()),
+  enabled: zod.boolean(),
+  isDefault: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListAutomationRulesResponse = zod.array(
+  ListAutomationRulesResponseItem,
+);
+
+/**
+ * @summary Create a new automation rule
+ */
+export const CreateAutomationRuleBody = zod.object({
+  name: zod.string(),
+  triggerType: zod.string().optional(),
+  conditions: zod.object({}).passthrough(),
+  actions: zod.array(zod.object({}).passthrough()),
+  enabled: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a rule
+ */
+export const UpdateAutomationRuleParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateAutomationRuleBody = zod.object({
+  name: zod.string().optional(),
+  conditions: zod.object({}).passthrough().optional(),
+  actions: zod.array(zod.object({}).passthrough()).optional(),
+  enabled: zod.boolean().optional(),
+});
+
+export const UpdateAutomationRuleResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  triggerType: zod.string(),
+  conditions: zod.object({}).passthrough(),
+  actions: zod.array(zod.object({}).passthrough()),
+  enabled: zod.boolean(),
+  isDefault: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a rule
+ */
+export const DeleteAutomationRuleParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary List tickets
+ */
+export const ListTicketsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  priority: zod.string(),
+  status: zod.string(),
+  linkedCallId: zod.string().nullish(),
+  createdByRuleId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListTicketsResponse = zod.array(ListTicketsResponseItem);
+
+/**
+ * @summary Update a ticket
+ */
+export const UpdateTicketParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateTicketBody = zod.object({
+  title: zod.string().optional(),
+  description: zod.string().nullish(),
+  priority: zod.string().optional(),
+  status: zod.string().optional(),
+});
+
+export const UpdateTicketResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  priority: zod.string(),
+  status: zod.string(),
+  linkedCallId: zod.string().nullish(),
+  createdByRuleId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a ticket
+ */
+export const DeleteTicketParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary List leads
+ */
+export const ListLeadsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  phone: zod.string().nullish(),
+  company: zod.string().nullish(),
+  intent: zod.string().nullish(),
+  status: zod.string(),
+  linkedCallId: zod.string().nullish(),
+  createdByRuleId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListLeadsResponse = zod.array(ListLeadsResponseItem);
+
+/**
+ * @summary Update a lead
+ */
+export const UpdateLeadParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateLeadBody = zod.object({
+  name: zod.string().optional(),
+  phone: zod.string().nullish(),
+  company: zod.string().nullish(),
+  intent: zod.string().nullish(),
+  status: zod.string().optional(),
+});
+
+export const UpdateLeadResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  phone: zod.string().nullish(),
+  company: zod.string().nullish(),
+  intent: zod.string().nullish(),
+  status: zod.string(),
+  linkedCallId: zod.string().nullish(),
+  createdByRuleId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a lead
+ */
+export const DeleteLeadParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary List tasks
+ */
+export const ListTasksResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  dueDate: zod.coerce.date().nullish(),
+  status: zod.string(),
+  linkedCallId: zod.string().nullish(),
+  createdByRuleId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListTasksResponse = zod.array(ListTasksResponseItem);
+
+/**
+ * @summary Update a task
+ */
+export const UpdateTaskParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateTaskBody = zod.object({
+  title: zod.string().optional(),
+  description: zod.string().nullish(),
+  dueDate: zod.coerce.date().nullish(),
+  status: zod.string().optional(),
+});
+
+export const UpdateTaskResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  dueDate: zod.coerce.date().nullish(),
+  status: zod.string(),
+  linkedCallId: zod.string().nullish(),
+  createdByRuleId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a task
+ */
+export const DeleteTaskParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary List sent follow-ups
+ */
+export const ListFollowupsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  callRecordId: zod.string(),
+  channel: zod.string(),
+  recipient: zod.string().nullish(),
+  subject: zod.string().nullish(),
+  message: zod.string(),
+  status: zod.string(),
+  sentAt: zod.coerce.date(),
+});
+export const ListFollowupsResponse = zod.array(ListFollowupsResponseItem);
+
+/**
+ * @summary Send a follow-up message for a call (simulated email)
+ */
+export const SendFollowupParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const SendFollowupBody = zod.object({
+  message: zod.string().nullish(),
+  recipient: zod.string().nullish(),
+  subject: zod.string().nullish(),
+});
+
+export const SendFollowupResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  callRecordId: zod.string(),
+  channel: zod.string(),
+  recipient: zod.string().nullish(),
+  subject: zod.string().nullish(),
+  message: zod.string(),
+  status: zod.string(),
+  sentAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Re-run automation rules against a single call
+ */
+export const RunRulesForCallParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RunRulesForCallResponse = zod.object({
+  rulesEvaluated: zod.number(),
+  rulesMatched: zod.number(),
+  actionsExecuted: zod.number(),
+  log: zod.array(
+    zod.object({
+      ruleId: zod.string(),
+      ruleName: zod.string(),
+      actionType: zod.string(),
+      ok: zod.boolean(),
+      message: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary List recent ingestion events
+ */
+export const ListIngestionEventsResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  source: zod.string(),
+  callRecordId: zod.string().nullish(),
+  status: zod.string(),
+  errorMessage: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListIngestionEventsResponse = zod.array(
+  ListIngestionEventsResponseItem,
+);
+
+/**
+ * @summary Simulate an inbound call event (for demo / no integrations setup)
+ */
+export const SimulateInboundCallResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  originalFilename: zod.string(),
+  fileUrl: zod.string().nullish(),
+  transcriptText: zod.string().nullish(),
+  summary: zod.string().nullish(),
+  customerName: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  callerPhone: zod.string().nullish(),
+  callType: zod.string().nullish(),
+  intent: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  sentiment: zod.string().nullish(),
+  status: zod.string(),
+  durationSeconds: zod.number().nullish(),
+  keyPoints: zod.array(zod.string()),
+  followUpMessage: zod.string().nullish(),
+  internalNotes: zod.string().nullish(),
+  crmJson: zod.object({}).passthrough().nullish(),
+  suggestedTags: zod.array(zod.string()),
+  isDemo: zod.string(),
+  errorMessage: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  actionItems: zod.array(
+    zod.object({
+      id: zod.string(),
+      callRecordId: zod.string(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      dueDate: zod.coerce.date().nullish(),
+      priority: zod.string(),
+      status: zod.string(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
 });

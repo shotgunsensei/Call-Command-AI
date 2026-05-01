@@ -11,7 +11,11 @@ import {
   Menu,
   X,
   User as UserIcon,
-  Activity
+  Activity,
+  Workflow,
+  Ticket as TicketIcon,
+  UserPlus,
+  ListTodo
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./ui/button";
@@ -32,6 +36,10 @@ const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Calls", href: "/calls", icon: Phone },
   { label: "New Call", href: "/calls/new", icon: UploadIcon },
+  { label: "Tickets", href: "/tickets", icon: TicketIcon },
+  { label: "Leads", href: "/leads", icon: UserPlus },
+  { label: "Tasks", href: "/tasks", icon: ListTodo },
+  { label: "Automation Rules", href: "/automation-rules", icon: Workflow },
   { label: "Integrations", href: "/integrations", icon: Cable },
   { label: "Billing", href: "/billing", icon: CreditCard },
   { label: "Settings", href: "/settings", icon: SettingsIcon },

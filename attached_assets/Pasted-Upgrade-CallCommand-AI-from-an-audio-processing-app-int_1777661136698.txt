@@ -1,0 +1,183 @@
+Upgrade CallCommand AI from an audio processing app into a business automation platform.
+
+Do NOT remove existing functionality. Expand it into a full workflow system.
+
+CORE OBJECTIVE:
+Transform call recordings into automated business actions (tickets, leads, tasks, notifications).
+
+---
+
+PHASE 1: AUTO INGESTION
+
+Add ingestion sources:
+
+1. Twilio integration (initial version can be simulated)
+- Create endpoint: POST /api/ingest/twilio
+- Accept recording URL + metadata
+- Auto-create CallRecord
+
+2. Email ingestion
+- Create endpoint: POST /api/ingest/email
+- Accept forwarded voicemail metadata
+- Simulate parsing
+
+3. Generic webhook ingestion
+- POST /api/ingest/webhook
+- Accept JSON payload with:
+  - recording_url
+  - caller_number
+  - timestamp
+
+All ingestion sources must:
+- create CallRecord
+- trigger transcription + AI analysis pipeline automatically
+
+---
+
+PHASE 2: DECISION ENGINE
+
+Create a rules system:
+
+Table: automation_rules
+- id
+- workspace_id
+- name
+- trigger_type (call_analyzed)
+- conditions (JSON)
+- actions (JSON)
+- enabled
+
+Example condition:
+{
+  "intent": "support",
+  "priority": "high"
+}
+
+Example actions:
+[
+  { "type": "create_ticket" },
+  { "type": "send_slack" }
+]
+
+Build rule evaluator:
+- Runs after AI analysis
+- Matches conditions
+- Executes actions
+
+---
+
+PHASE 3: ACTION ENGINE
+
+Implement:
+
+1. Ticket creation
+- Store in local DB first (tickets table)
+- Fields:
+  - title
+  - description
+  - priority
+  - status
+  - linked_call_id
+
+2. Lead creation
+- leads table:
+  - name
+  - phone
+  - intent
+  - status
+
+3. Task creation
+- tasks table:
+  - title
+  - due_date
+  - status
+  - linked_call_id
+
+4. Slack/webhook notifications
+- reuse existing webhook system
+
+---
+
+PHASE 4: CALL → OBJECT MAPPING
+
+After analysis:
+- call_type = support → create ticket
+- call_type = sales → create lead
+- call_type = scheduling → create task
+
+Make this configurable via rules, not hardcoded.
+
+---
+
+PHASE 5: FOLLOW-UP ENGINE
+
+Generate:
+- follow_up_message
+- internal_notes
+
+Add “Send Follow-Up” button:
+- simulate email send
+- log sent messages
+
+---
+
+PHASE 6: DASHBOARD UPGRADE
+
+Add widgets:
+
+- Open tickets
+- New leads this week
+- High priority calls
+- Angry sentiment alerts
+- Conversion funnel (calls → leads → closed)
+
+---
+
+PHASE 7: UI ADDITIONS
+
+Add pages:
+
+- /automation-rules
+- /tickets
+- /leads
+- /tasks
+
+Add:
+- rule builder UI (simple JSON editor acceptable)
+- object detail views
+
+---
+
+PHASE 8: SECURITY + OWNERSHIP
+
+Ensure:
+- all created objects are tied to workspace_id
+- user cannot access other workspace data
+
+---
+
+PHASE 9: DEMO MODE
+
+If no integrations exist:
+- simulate ingestion events
+- simulate call recordings
+- still trigger full pipeline
+
+---
+
+FINAL REQUIREMENTS:
+
+- All ingestion triggers processing automatically
+- Rules actually execute actions
+- Tickets/leads/tasks are created and visible
+- Dashboard reflects real data
+- No dead buttons
+- System works even without external APIs
+
+After implementation:
+- run typecheck
+- fix errors
+- update README with:
+  - how ingestion works
+  - how rules work
+  - how to extend actions

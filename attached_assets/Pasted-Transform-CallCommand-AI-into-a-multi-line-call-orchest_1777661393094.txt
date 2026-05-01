@@ -1,0 +1,180 @@
+Transform CallCommand AI into a multi-line call orchestration platform with programmable routing and automation.
+
+Do NOT remove existing functionality.
+
+---
+
+PHASE 1: MULTI-LINE CHANNEL SYSTEM
+
+Create table: channels
+
+- id
+- workspace_id
+- name
+- phone_number
+- type (twilio | sip | webhook | email)
+- default_route
+- is_active
+- created_at
+
+Update CallRecord:
+- add channel_id
+
+All ingestion must map to a channel.
+
+---
+
+PHASE 2: CALL FLOW ENGINE
+
+Create table: call_flows
+
+- id
+- workspace_id
+- name
+- channel_id
+- is_active
+
+Create table: flow_nodes
+
+- id
+- flow_id
+- type (condition | action | ai_decision | route)
+- config (JSON)
+- next_node_id
+
+Create flow execution engine:
+- starts when call is ingested
+- walks nodes step-by-step
+- evaluates conditions
+- executes actions
+
+---
+
+PHASE 3: AI DECISION NODE
+
+Node type: ai_decision
+
+Input:
+- transcript
+- metadata
+
+Output:
+- intent
+- priority
+- sentiment
+
+Store result in CallRecord
+
+---
+
+PHASE 4: CONDITION NODE
+
+Node type: condition
+
+Example config:
+{
+  "field": "priority",
+  "operator": "equals",
+  "value": "high"
+}
+
+Routes to different next_node_ids
+
+---
+
+PHASE 5: ACTION NODE
+
+Implement actions:
+
+- create_ticket
+- create_lead
+- create_task
+- send_webhook
+- send_slack
+- send_email
+- assign_user
+- mark_priority
+
+---
+
+PHASE 6: ROUTING NODE
+
+Node type: route
+
+Allows:
+- assign to user
+- assign to queue
+- escalate
+- end flow
+
+---
+
+PHASE 7: REAL-TIME OR SIMULATED CALL FLOW EXECUTION
+
+When call is ingested:
+- run transcription
+- run AI analysis
+- execute flow
+- log every step
+
+Create table: flow_logs
+
+- id
+- call_record_id
+- node_id
+- result
+- timestamp
+
+---
+
+PHASE 8: FLOW BUILDER UI
+
+Create page: /flows
+
+Features:
+- create/edit flow
+- assign flow to channel
+- simple node editor (JSON acceptable for MVP)
+
+---
+
+PHASE 9: MULTI-LINE DASHBOARD
+
+Add:
+
+- active channels
+- calls per channel
+- missed calls
+- escalations
+- high priority alerts
+
+---
+
+PHASE 10: SIMULATION MODE
+
+Add ability to:
+- simulate incoming call
+- pick channel
+- input transcript manually
+- run flow engine
+- display results
+
+---
+
+FINAL REQUIREMENTS:
+
+- system supports multiple phone lines
+- each line has independent behavior
+- flows execute automatically
+- actions are triggered correctly
+- logs show full execution path
+- no dead UI elements
+- works without external APIs using simulation
+
+After implementation:
+- run typecheck
+- fix errors
+- update README with:
+  - how flows work
+  - how channels work
+  - how to simulate calls

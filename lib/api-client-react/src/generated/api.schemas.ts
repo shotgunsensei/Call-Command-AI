@@ -164,11 +164,22 @@ export interface TagCount {
   count: number;
 }
 
+export type DashboardStatsConversionFunnel = {
+  calls: number;
+  leads: number;
+  closedLeads: number;
+};
+
 export interface DashboardStats {
   totalCalls: number;
   callsThisMonth: number;
   openActionItems: number;
   highPriorityCalls: number;
+  openTickets: number;
+  newLeadsThisWeek: number;
+  openTasks: number;
+  angrySentimentAlerts: number;
+  conversionFunnel: DashboardStatsConversionFunnel;
   recentCalls: Call[];
   sentimentBreakdown: SentimentBucket[];
   topTags: TagCount[];
@@ -191,6 +202,202 @@ export interface BillingPlan {
   callsThisMonth: number;
   monthlyLimit: number;
   stripeConfigured: boolean;
+}
+
+export type IngestionTokenResponseEndpoints = {
+  twilio: string;
+  email: string;
+  webhook: string;
+};
+
+export interface IngestionTokenResponse {
+  /** @nullable */
+  token: string | null;
+  hasToken: boolean;
+  endpoints: IngestionTokenResponseEndpoints;
+}
+
+export type AutomationRuleConditions = { [key: string]: unknown };
+
+export type AutomationRuleActionsItem = { [key: string]: unknown };
+
+export interface AutomationRule {
+  id: string;
+  userId: string;
+  name: string;
+  triggerType: string;
+  conditions: AutomationRuleConditions;
+  actions: AutomationRuleActionsItem[];
+  enabled: boolean;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AutomationRuleList = AutomationRule[];
+
+export type CreateAutomationRuleBodyConditions = { [key: string]: unknown };
+
+export type CreateAutomationRuleBodyActionsItem = { [key: string]: unknown };
+
+export interface CreateAutomationRuleBody {
+  name: string;
+  triggerType?: string;
+  conditions: CreateAutomationRuleBodyConditions;
+  actions: CreateAutomationRuleBodyActionsItem[];
+  enabled?: boolean;
+}
+
+export type UpdateAutomationRuleBodyConditions = { [key: string]: unknown };
+
+export type UpdateAutomationRuleBodyActionsItem = { [key: string]: unknown };
+
+export interface UpdateAutomationRuleBody {
+  name?: string;
+  conditions?: UpdateAutomationRuleBodyConditions;
+  actions?: UpdateAutomationRuleBodyActionsItem[];
+  enabled?: boolean;
+}
+
+export interface Ticket {
+  id: string;
+  userId: string;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  priority: string;
+  status: string;
+  /** @nullable */
+  linkedCallId?: string | null;
+  /** @nullable */
+  createdByRuleId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TicketList = Ticket[];
+
+export interface UpdateTicketBody {
+  title?: string;
+  /** @nullable */
+  description?: string | null;
+  priority?: string;
+  status?: string;
+}
+
+export interface Lead {
+  id: string;
+  userId: string;
+  name: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  company?: string | null;
+  /** @nullable */
+  intent?: string | null;
+  status: string;
+  /** @nullable */
+  linkedCallId?: string | null;
+  /** @nullable */
+  createdByRuleId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LeadList = Lead[];
+
+export interface UpdateLeadBody {
+  name?: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  company?: string | null;
+  /** @nullable */
+  intent?: string | null;
+  status?: string;
+}
+
+export interface Task {
+  id: string;
+  userId: string;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  status: string;
+  /** @nullable */
+  linkedCallId?: string | null;
+  /** @nullable */
+  createdByRuleId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TaskList = Task[];
+
+export interface UpdateTaskBody {
+  title?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  status?: string;
+}
+
+export interface Followup {
+  id: string;
+  userId: string;
+  callRecordId: string;
+  channel: string;
+  /** @nullable */
+  recipient?: string | null;
+  /** @nullable */
+  subject?: string | null;
+  message: string;
+  status: string;
+  sentAt: string;
+}
+
+export type FollowupList = Followup[];
+
+export interface SendFollowupBody {
+  /** @nullable */
+  message?: string | null;
+  /** @nullable */
+  recipient?: string | null;
+  /** @nullable */
+  subject?: string | null;
+}
+
+export interface IngestionEvent {
+  id: string;
+  userId: string;
+  source: string;
+  /** @nullable */
+  callRecordId?: string | null;
+  status: string;
+  /** @nullable */
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
+export type IngestionEventList = IngestionEvent[];
+
+export type RuleExecutionResultLogItem = {
+  ruleId: string;
+  ruleName: string;
+  actionType: string;
+  ok: boolean;
+  /** @nullable */
+  message?: string | null;
+};
+
+export interface RuleExecutionResult {
+  rulesEvaluated: number;
+  rulesMatched: number;
+  actionsExecuted: number;
+  log: RuleExecutionResultLogItem[];
 }
 
 export type ListCallsParams = {

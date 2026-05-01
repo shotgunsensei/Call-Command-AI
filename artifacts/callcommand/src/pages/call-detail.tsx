@@ -6,7 +6,9 @@ import {
   useSendCallWebhook,
   useListIntegrations,
   useDeleteCall,
-  useGetMe
+  useGetMe,
+  useSendFollowup,
+  useRunRulesForCall
 } from "@workspace/api-client-react";
 import { useRoute, useLocation } from "wouter";
 import { 
@@ -40,7 +42,9 @@ import {
   Building,
   Tag,
   MessageSquare,
-  FileText
+  FileText,
+  Send,
+  Zap
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -58,6 +62,8 @@ export default function CallDetail() {
   const updateActionItem = useUpdateActionItem();
   const sendWebhook = useSendCallWebhook();
   const deleteCall = useDeleteCall();
+  const sendFollowup = useSendFollowup();
+  const runRules = useRunRulesForCall();
 
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -106,6 +112,31 @@ export default function CallDetail() {
     }
   };
 
+  const handleSendFollowup = async () => {
+    try {
+      await sendFollowup.mutateAsync({ id, data: {} });
+      toast({
+        title: "Follow-up logged",
+        description: "Saved to follow-up history. Wire a webhook integration to deliver via email/SMS.",
+      });
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleRunRules = async () => {
+    try {
+      const res = await runRules.mutateAsync({ id });
+      toast({
+        title: "Rules evaluated",
+        description: `${res?.rulesMatched ?? 0} matched · ${res?.actionsExecuted ?? 0} action(s) executed.`,
+      });
+      refetch();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   const handleSendWebhook = async (integrationId: string) => {
     try {
       const res = await sendWebhook.mutateAsync({ id, data: { integrationId } });
@@ -141,6 +172,26 @@ export default function CallDetail() {
           <Button variant="outline" size="sm" onClick={handleReprocess} disabled={isProcessing || call.status === "processing"}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isProcessing ? 'animate-spin' : ''}`} />
             Reprocess
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRunRules}
+            disabled={runRules.isPending || call.status !== "ready"}
+            data-testid="button-run-rules"
+          >
+            <Zap className={`mr-2 h-4 w-4 ${runRules.isPending ? 'animate-pulse text-primary' : ''}`} />
+            Run rules
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSendFollowup}
+            disabled={sendFollowup.isPending || !call.followUpMessage}
+            data-testid="button-send-followup"
+          >
+            <Send className={`mr-2 h-4 w-4 ${sendFollowup.isPending ? 'animate-pulse text-primary' : ''}`} />
+            Send follow-up
           </Button>
           <Button variant="outline" size="sm" asChild>
             <a href={`/api/calls/${id}/pdf`} download>

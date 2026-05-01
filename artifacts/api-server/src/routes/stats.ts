@@ -8,6 +8,9 @@ import {
   db,
   callRecordsTable,
   actionItemsTable,
+  ticketsTable,
+  leadsTable,
+  tasksTable,
 } from "@workspace/db";
 import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -23,6 +26,10 @@ router.get(
     const monthStart = new Date();
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
+
+    const weekStart = new Date();
+    weekStart.setUTCDate(weekStart.getUTCDate() - 7);
+    weekStart.setUTCHours(0, 0, 0, 0);
 
     const [{ totalCalls } = { totalCalls: 0 }] = await db
       .select({ totalCalls: sql<number>`count(*)::int` })
@@ -60,6 +67,73 @@ router.get(
         and(
           eq(callRecordsTable.userId, userId),
           sql`${callRecordsTable.priority} IN ('high','urgent')`,
+        ),
+      );
+
+    const [{ openTickets } = { openTickets: 0 }] = await db
+      .select({ openTickets: sql<number>`count(*)::int` })
+      .from(ticketsTable)
+      .where(
+        and(
+          eq(ticketsTable.userId, userId),
+          ne(ticketsTable.status, "closed"),
+        ),
+      );
+
+    const [{ newLeadsThisWeek } = { newLeadsThisWeek: 0 }] = await db
+      .select({ newLeadsThisWeek: sql<number>`count(*)::int` })
+      .from(leadsTable)
+      .where(
+        and(
+          eq(leadsTable.userId, userId),
+          gte(leadsTable.createdAt, weekStart),
+        ),
+      );
+
+    const [{ openTasks } = { openTasks: 0 }] = await db
+      .select({ openTasks: sql<number>`count(*)::int` })
+      .from(tasksTable)
+      .where(
+        and(eq(tasksTable.userId, userId), ne(tasksTable.status, "done")),
+      );
+
+    const [{ angrySentimentAlerts } = { angrySentimentAlerts: 0 }] = await db
+      .select({ angrySentimentAlerts: sql<number>`count(*)::int` })
+      .from(callRecordsTable)
+      .where(
+        and(
+          eq(callRecordsTable.userId, userId),
+          sql`${callRecordsTable.sentiment} IN ('negative','mixed')`,
+        ),
+      );
+
+    // Conversion funnel: calls (this month) → leads (this month) → closed leads (this month)
+    const [{ funnelCalls } = { funnelCalls: 0 }] = await db
+      .select({ funnelCalls: sql<number>`count(*)::int` })
+      .from(callRecordsTable)
+      .where(
+        and(
+          eq(callRecordsTable.userId, userId),
+          gte(callRecordsTable.createdAt, monthStart),
+        ),
+      );
+    const [{ funnelLeads } = { funnelLeads: 0 }] = await db
+      .select({ funnelLeads: sql<number>`count(*)::int` })
+      .from(leadsTable)
+      .where(
+        and(
+          eq(leadsTable.userId, userId),
+          gte(leadsTable.createdAt, monthStart),
+        ),
+      );
+    const [{ funnelClosed } = { funnelClosed: 0 }] = await db
+      .select({ funnelClosed: sql<number>`count(*)::int` })
+      .from(leadsTable)
+      .where(
+        and(
+          eq(leadsTable.userId, userId),
+          gte(leadsTable.createdAt, monthStart),
+          eq(leadsTable.status, "closed"),
         ),
       );
 
@@ -154,6 +228,15 @@ router.get(
       callsThisMonth: Number(callsThisMonth) || 0,
       openActionItems: Number(openActionItems) || 0,
       highPriorityCalls: Number(highPriorityCalls) || 0,
+      openTickets: Number(openTickets) || 0,
+      newLeadsThisWeek: Number(newLeadsThisWeek) || 0,
+      openTasks: Number(openTasks) || 0,
+      angrySentimentAlerts: Number(angrySentimentAlerts) || 0,
+      conversionFunnel: {
+        calls: Number(funnelCalls) || 0,
+        leads: Number(funnelLeads) || 0,
+        closedLeads: Number(funnelClosed) || 0,
+      },
       recentCalls,
       sentimentBreakdown: sentimentRows.map((r) => ({
         sentiment: r.sentiment ?? "unknown",

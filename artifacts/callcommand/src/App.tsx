@@ -17,6 +17,10 @@ import Upload from "@/pages/upload";
 import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
+import AutomationRulesPage from "@/pages/automation-rules";
+import TicketsPage from "@/pages/tickets";
+import LeadsPage from "@/pages/leads";
+import TasksPage from "@/pages/tasks";
 
 const queryClient = new QueryClient();
 
@@ -198,6 +202,10 @@ function ClerkProviderWithRoutes() {
           <ProtectedRoute path="/calls/new" component={Upload} />
           <ProtectedRoute path="/calls/:id" component={CallDetail} />
           <ProtectedRoute path="/integrations" component={Integrations} />
+          <ProtectedRoute path="/automation-rules" component={AutomationRulesPage} />
+          <ProtectedRoute path="/tickets" component={TicketsPage} />
+          <ProtectedRoute path="/leads" component={LeadsPage} />
+          <ProtectedRoute path="/tasks" component={TasksPage} />
           <ProtectedRoute path="/billing" component={Billing} />
           <ProtectedRoute path="/settings" component={Settings} />
           

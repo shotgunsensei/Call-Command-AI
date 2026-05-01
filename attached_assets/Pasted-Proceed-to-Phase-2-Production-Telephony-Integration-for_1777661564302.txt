@@ -1,0 +1,423 @@
+Proceed to Phase 2: Production Telephony Integration for CallCommand Orchestrator.
+
+Do NOT rebuild the app.
+Do NOT remove existing features.
+Preserve:
+- multi-line channels
+- call flows
+- flow logs
+- automation rules
+- tickets/leads/tasks
+- existing upload/manual simulation workflow
+
+OBJECTIVE:
+Connect CallCommand Orchestrator to real incoming phone calls using production-ready telephony integrations, starting with Twilio, while keeping SIP/Asterisk/FreePBX support as an extensible pathway.
+
+The platform must support multiple phone numbers/lines, each mapped to a Channel with its own routing behavior, call flow, recording behavior, and automation actions.
+
+---
+
+PHASE 2A: TWILIO PRODUCTION INTEGRATION
+
+Add environment variables:
+
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_API_KEY=
+TWILIO_API_SECRET=
+TWILIO_WEBHOOK_BASE_URL=
+TWILIO_DEFAULT_RECORD_CALLS=true
+TWILIO_VALIDATE_SIGNATURE=true
+
+Add Twilio config validation utility:
+- Detect whether Twilio is configured
+- Never expose secrets client-side
+- Show safe status in admin/settings UI
+
+Create server endpoints:
+
+POST /api/twilio/voice/incoming
+Purpose:
+- Receive incoming Twilio voice webhook
+- Validate Twilio signature when enabled
+- Identify channel by To phone number
+- Create CallRecord immediately with:
+  - channel_id
+  - caller_phone from From
+  - called_number from To
+  - provider = twilio
+  - provider_call_sid
+  - status = incoming
+  - call_direction = inbound
+- Return TwiML response
+
+POST /api/twilio/voice/status
+Purpose:
+- Receive call lifecycle updates
+- Update CallRecord status:
+  - ringing
+  - in_progress
+  - completed
+  - failed
+  - busy
+  - no_answer
+- Store duration and timestamps when available
+
+POST /api/twilio/voice/recording
+Purpose:
+- Receive recording callback
+- Store recording URL and metadata
+- Trigger transcription + AI analysis pipeline
+- Then execute assigned call flow automatically
+
+POST /api/twilio/voice/transcription
+Optional:
+- Accept Twilio transcription callback if enabled
+- Prefer internal transcription pipeline if OpenAI/Deepgram is configured
+
+---
+
+PHASE 2B: CHANNEL-BASED TWIML BEHAVIOR
+
+Each Channel should support:
+
+- greeting_text
+- record_calls boolean
+- allow_voicemail boolean
+- business_hours JSON
+- after_hours_behavior:
+  - voicemail
+  - forward
+  - ai_intake_placeholder
+  - hangup
+- forward_number
+- max_call_duration
+- recording_consent_text
+
+Update channels table with these fields.
+
+Incoming Twilio behavior:
+
+If inside business hours:
+- Play greeting
+- Record call if enabled
+- Forward to configured number if forward_number exists
+- Otherwise route to voicemail/intake
+
+If outside business hours:
+- Use after_hours_behavior
+
+Generate TwiML safely using channel config.
+
+Initial TwiML MVP behavior:
+- Say greeting_text
+- If recording_consent_text exists, say it
+- Record caller message or forward call
+- Attach recording callback URL
+- Attach status callback URL
+
+---
+
+PHASE 2C: MULTI-LINE ROUTING
+
+Update channel matching:
+
+- Normalize phone numbers to E.164 format
+- Match Twilio “To” number against channels.phone_number
+- If no channel found:
+  - use workspace default channel if configured
+  - otherwise create an orphan CallRecord with status = error
+  - return safe TwiML message
+
+Add UI to Channels page:
+
+- Create/edit channel
+- Phone number
+- Provider type
+- Greeting text
+- Recording consent text
+- Business hours
+- After-hours behavior
+- Forward number
+- Assigned call flow
+- Test webhook URL display
+
+Show each channel’s Twilio webhook URLs:
+- Incoming voice URL
+- Status callback URL
+- Recording callback URL
+
+Do not expose secrets.
+
+---
+
+PHASE 2D: CALL STATE MACHINE
+
+Update CallRecord status enum to support:
+
+- incoming
+- ringing
+- in_progress
+- recording_ready
+- transcribing
+- analyzing
+- flow_running
+- ready
+- error
+- completed
+- failed
+- busy
+- no_answer
+
+Ensure old statuses still display properly:
+- processing = transcribing/analyzing/flow_running
+- ready = completed/ready
+- error = error/failed
+
+Update UI badges and filters accordingly.
+
+---
+
+PHASE 2E: RECORDING INGESTION PIPELINE
+
+When Twilio recording callback arrives:
+
+1. Validate request
+2. Find CallRecord by CallSid
+3. Store:
+   - recording_url
+   - recording_sid
+   - recording_duration
+4. Set status = recording_ready
+5. Download or stream recording server-side if required
+6. Transcribe using configured transcription service
+7. Analyze transcript
+8. Execute assigned call flow
+9. Create tickets/leads/tasks/actions based on flow
+10. Mark status = ready/completed
+11. Write flow logs and processing logs
+
+Add retry-safe behavior:
+- If same callback arrives twice, do not duplicate records
+- If processing fails, store error message and allow manual retry
+
+Add button on Call Detail:
+- Retry processing
+
+---
+
+PHASE 2F: TELEPHONY EVENT LOGS
+
+Create table: telephony_events
+
+- id
+- workspace_id
+- call_record_id
+- provider
+- event_type
+- provider_event_id
+- raw_payload JSON
+- created_at
+
+Log every Twilio webhook event:
+- incoming
+- status
+- recording
+- transcription
+- error
+
+UI:
+Add section on Call Detail:
+- Telephony event timeline
+
+---
+
+PHASE 2G: SIP / ASTERISK / FREEPBX EXTENSIBILITY
+
+Do not fully implement SIP yet, but create clean abstraction.
+
+Create provider interface:
+
+TelephonyProvider:
+- normalizeIncomingPayload()
+- generateResponse()
+- validateRequest()
+- mapStatus()
+- extractRecordingInfo()
+
+Implement:
+- TwilioProvider
+
+Add placeholder:
+- SipWebhookProvider
+- AsteriskAriProvider
+- FreePbxCdrProvider
+
+Create docs:
+- How SIP/Asterisk can later post CDR/recording events into /api/ingest/webhook
+- How to map DID numbers to Channels
+
+---
+
+PHASE 2H: LIVE OPERATOR / SWITCHBOARD VIEW
+
+Create page: /switchboard
+
+Purpose:
+A real-time-feeling control room for all incoming lines.
+
+Show:
+- Channels as vertical switchboard columns
+- Current calls per channel
+- Caller number
+- Status
+- Priority once analyzed
+- Assigned flow
+- Last action taken
+- Quick buttons:
+  - Open call
+  - Mark urgent
+  - Create ticket
+  - Send to voicemail
+  - Retry processing
+
+For MVP:
+- Poll backend every 5-10 seconds
+- Do not require WebSockets yet
+
+Visual style:
+- Dark command center
+- Multi-line board
+- Retro switchboard influence
+- Modern SaaS polish
+- Red accents
+
+---
+
+PHASE 2I: PRODUCTIZATION MODES
+
+Add configurable workspace “product mode”:
+
+- MSP Support Desk
+- Sales Intake
+- Field Service
+- Medical/Office Intake
+- General Business
+
+Each mode should pre-create:
+- default channels
+- default call flows
+- default automation rules
+- dashboard labels
+
+Do not include automotive diagnostics from calls.
+
+Examples:
+
+MSP Support Desk:
+- Support Line
+- Emergency Line
+- Billing Line
+- Sales Line
+Actions:
+- create ticket
+- escalate urgent
+- Slack alert
+
+Sales Intake:
+- New Leads Line
+- Existing Customers Line
+Actions:
+- create lead
+- assign follow-up task
+- send CRM webhook
+
+Field Service:
+- Dispatch Line
+- After Hours Line
+Actions:
+- create job/task
+- notify dispatcher
+- send customer follow-up
+
+Medical/Office Intake:
+- Scheduling Line
+- General Questions Line
+Actions:
+- create intake task
+- route based on urgency
+Important:
+Do not make medical diagnosis claims.
+Keep it administrative only.
+
+---
+
+PHASE 2J: ADMIN SETUP WIZARD
+
+Create /setup/telephony
+
+Wizard steps:
+
+1. Choose product mode
+2. Create or confirm channels
+3. Add Twilio phone numbers
+4. Copy webhook URLs for Twilio console
+5. Configure greeting/recording consent
+6. Assign call flow
+7. Send test event
+8. Confirm call appears in switchboard
+
+Include demo/simulation option when Twilio keys are missing.
+
+---
+
+PHASE 2K: DOCUMENTATION
+
+Update README with:
+
+- Twilio setup
+- Required env vars
+- How to configure Twilio webhook URLs
+- How channels map to phone numbers
+- How recordings are processed
+- How call flows run after recordings
+- How to test locally using ngrok/Replit public URL
+- Security notes
+- Recording consent warning
+- SIP/Asterisk future integration path
+
+Add clear note:
+Recording consent laws vary by jurisdiction. The app provides consent prompt configuration, but users are responsible for legal compliance.
+
+---
+
+PHASE 2L: QUALITY CHECKS
+
+After implementation:
+
+- Run pnpm run typecheck
+- Run available tests
+- Test unauthenticated Twilio webhook behavior
+- Test signature validation disabled mode for local dev
+- Test signature validation enabled mode if possible
+- Test unknown phone number behavior
+- Test duplicate recording callback behavior
+- Test simulated incoming call
+- Test channel-specific call flow execution
+- Test switchboard polling view
+- Update replit.md with concise Phase 2 changelog
+
+Acceptance criteria:
+
+- A Twilio number can point to /api/twilio/voice/incoming
+- Incoming call creates CallRecord
+- Recording callback attaches recording
+- Recording triggers processing pipeline
+- Flow executes after analysis
+- Tickets/leads/tasks/actions are created by flow
+- Multiple phone numbers route to different Channels
+- Switchboard shows live/recent call activity
+- Demo mode still works without Twilio keys
+- No dead buttons
+- No broken routes
+- Existing workflows remain intact

@@ -1,0 +1,508 @@
+Proceed to Phase 3: Live AI Receptionist + Transfer Logic for CallCommand Orchestrator.
+
+Do NOT rebuild the app.
+Do NOT remove existing functionality.
+Preserve:
+- channels
+- Twilio production integration
+- call flows
+- switchboard
+- automation rules
+- tickets/leads/tasks
+- manual/demo simulation
+- upload workflow
+
+OBJECTIVE:
+Upgrade CallCommand Orchestrator from post-call automation into a live incoming-call operator system.
+
+The platform should be able to answer calls, collect structured intake information, route or transfer callers, create business objects, and escalate based on channel/product-mode rules.
+
+Do NOT include automotive diagnostics from phone calls.
+Do NOT make medical diagnosis claims.
+Medical/office mode must remain administrative only.
+
+---
+
+PHASE 3A: AI RECEPTIONIST PROFILE
+
+Create table: receptionist_profiles
+
+Fields:
+- id
+- workspace_id
+- channel_id nullable
+- name
+- voice_provider: twilio | elevenlabs_placeholder | openai_realtime_placeholder
+- greeting_script
+- fallback_script
+- escalation_script
+- voicemail_script
+- tone: professional | friendly | urgent | concise | warm
+- intake_schema JSON
+- escalation_rules JSON
+- enabled boolean
+- created_at
+- updated_at
+
+Each Channel can optionally assign a receptionist_profile_id.
+
+If no profile is assigned, use workspace default receptionist profile.
+
+---
+
+PHASE 3B: LIVE CALL SESSION MODEL
+
+Create table: live_call_sessions
+
+Fields:
+- id
+- workspace_id
+- channel_id
+- call_record_id
+- provider
+- provider_call_sid
+- caller_phone
+- called_number
+- session_status:
+  - active
+  - collecting_intake
+  - transferring
+  - voicemail
+  - completed
+  - failed
+- current_step
+- collected_data JSON
+- transcript_live TEXT
+- ai_summary_live TEXT
+- transfer_target
+- escalation_reason
+- started_at
+- ended_at
+
+Create APIs:
+- GET /api/live-sessions
+- GET /api/live-sessions/:id
+- POST /api/live-sessions/:id/mark-urgent
+- POST /api/live-sessions/:id/transfer
+- POST /api/live-sessions/:id/end
+- POST /api/live-sessions/:id/add-note
+
+All routes must enforce workspace ownership.
+
+---
+
+PHASE 3C: TWILIO LIVE INTERACTION FLOW
+
+Update POST /api/twilio/voice/incoming:
+
+Instead of only recording/forwarding, support live receptionist behavior.
+
+Channel behavior options:
+- record_only
+- forward_only
+- voicemail_only
+- ai_receptionist
+- ai_screen_then_transfer
+- ai_after_hours_intake
+
+Add channel field:
+- live_behavior
+
+For live_behavior = ai_receptionist or ai_screen_then_transfer:
+
+1. Create CallRecord
+2. Create live_call_session
+3. Return TwiML that:
+   - Says greeting_script
+   - Uses Gather speech input
+   - Posts speech result to new endpoint:
+     POST /api/twilio/voice/gather
+   - Falls back to voicemail if no speech
+
+Create endpoint:
+POST /api/twilio/voice/gather
+
+Responsibilities:
+- Validate Twilio signature if enabled
+- Find live_call_session by CallSid
+- Append SpeechResult to transcript_live
+- Run lightweight AI intake step
+- Update collected_data
+- Decide next action:
+  - ask next question
+  - transfer call
+  - send to voicemail
+  - create ticket/lead/task
+  - escalate
+  - end politely
+- Return TwiML for next step
+
+MVP can use Twilio Gather loops rather than full real-time streaming.
+
+---
+
+PHASE 3D: INTAKE SCHEMA ENGINE
+
+Receptionist profiles must define intake_schema.
+
+Example:
+
+MSP Support Intake:
+{
+  "fields": [
+    {
+      "key": "company_name",
+      "label": "Company name",
+      "required": true
+    },
+    {
+      "key": "caller_name",
+      "label": "Caller name",
+      "required": true
+    },
+    {
+      "key": "issue_summary",
+      "label": "Brief issue summary",
+      "required": true
+    },
+    {
+      "key": "urgency",
+      "label": "Urgency",
+      "required": true,
+      "allowed_values": ["low", "normal", "high", "emergency"]
+    }
+  ]
+}
+
+Sales Intake:
+{
+  "fields": [
+    {"key": "caller_name", "label": "Caller name", "required": true},
+    {"key": "company_name", "label": "Company name", "required": false},
+    {"key": "interest", "label": "What they are interested in", "required": true},
+    {"key": "budget", "label": "Budget range", "required": false},
+    {"key": "timeline", "label": "Timeline", "required": false}
+  ]
+}
+
+Field Service:
+{
+  "fields": [
+    {"key": "caller_name", "label": "Caller name", "required": true},
+    {"key": "service_address", "label": "Service address", "required": true},
+    {"key": "service_needed", "label": "Service needed", "required": true},
+    {"key": "preferred_time", "label": "Preferred appointment time", "required": false}
+  ]
+}
+
+Medical/Office Administrative Intake:
+{
+  "fields": [
+    {"key": "caller_name", "label": "Caller name", "required": true},
+    {"key": "callback_number", "label": "Callback number", "required": true},
+    {"key": "request_type", "label": "Administrative request type", "required": true},
+    {"key": "preferred_callback_time", "label": "Preferred callback time", "required": false}
+  ]
+}
+
+Do not ask for protected medical details beyond administrative routing.
+
+Build intake engine:
+- determine missing required fields
+- generate next question
+- parse answers into collected_data
+- stop when sufficient info is collected
+
+---
+
+PHASE 3E: AI DECISION SERVICE
+
+Create server-side service:
+
+liveReceptionistDecisionService
+
+Input:
+- profile
+- channel
+- current transcript
+- collected_data
+- latest user speech
+- call history if available
+
+Output strict JSON:
+{
+  "intent": "",
+  "priority": "low | normal | high | emergency",
+  "sentiment": "positive | neutral | frustrated | angry | confused",
+  "collected_data_updates": {},
+  "next_question": "",
+  "recommended_action": "ask_next | transfer | voicemail | create_ticket | create_lead | create_task | escalate | end_call",
+  "reason": "",
+  "transfer_target": "",
+  "public_response": "",
+  "internal_note": ""
+}
+
+Must:
+- use server-side API keys only
+- include demo fallback if no AI key
+- never expose prompts client-side
+- handle malformed AI JSON safely
+
+---
+
+PHASE 3F: TRANSFER LOGIC
+
+Support transfer targets:
+
+Create table: transfer_targets
+
+Fields:
+- id
+- workspace_id
+- name
+- type: user | queue | external_number | voicemail
+- phone_number nullable
+- user_id nullable
+- queue_name nullable
+- business_hours JSON
+- priority
+- enabled
+
+UI page:
+/transfer-targets
+
+Twilio TwiML transfer:
+- If target type external_number, use <Dial>
+- If unavailable/outside hours, fall back to voicemail/intake
+- If target type queue, route to configured fallback number for MVP
+- Log transfer attempt
+
+Add transfer_logs table:
+- id
+- workspace_id
+- call_record_id
+- live_session_id
+- target_id
+- status
+- reason
+- created_at
+
+Switchboard quick action:
+- Transfer live call to target
+
+---
+
+PHASE 3G: ESCALATION RULES
+
+Receptionist profile escalation_rules JSON:
+
+Examples:
+{
+  "emergency_keywords": ["server down", "all users down", "cannot operate", "security breach"],
+  "angry_sentiment_escalates": true,
+  "vip_numbers": ["+19195551212"],
+  "after_hours_emergency_transfer_target_id": ""
+}
+
+When triggered:
+- mark live_call_session escalation_reason
+- set CallRecord priority urgent/high
+- send Slack/webhook alert if configured
+- optionally transfer to emergency target
+- create ticket/task immediately
+
+---
+
+PHASE 3H: LIVE SWITCHBOARD UPGRADE
+
+Update /switchboard:
+
+Add live session cards:
+- active call timer
+- caller number
+- channel
+- live behavior
+- current step
+- collected intake fields
+- detected intent
+- priority
+- sentiment
+- transcript_live preview
+- AI recommended action
+- transfer target
+- escalation reason
+
+Quick actions:
+- mark urgent
+- transfer
+- create ticket
+- create lead
+- create task
+- send to voicemail
+- end session
+- add internal note
+
+For MVP:
+- polling every 3-5 seconds
+- no WebSockets required
+
+Make it feel like a modern AI switchboard:
+- multiple line columns
+- active calls pulsing subtly
+- red urgent indicators
+- operator-console style
+
+---
+
+PHASE 3I: AI-CREATED BUSINESS OBJECTS DURING CALL
+
+During live intake, allow creation of:
+
+- ticket
+- lead
+- task
+
+The object must link to:
+- call_record_id
+- live_session_id
+- channel_id
+- collected_data
+
+Prevent duplicates:
+- if already created for the live session, update instead of duplicate
+
+---
+
+PHASE 3J: VOICEMAIL + CALLBACK WORKFLOW
+
+If call goes to voicemail:
+
+- store voicemail recording
+- transcribe after recording callback
+- analyze
+- create task/ticket/lead based on channel flow
+- mark live_call_session status voicemail
+- send alert if high priority
+
+Add UI:
+- voicemail inbox filter
+- callback needed queue
+
+---
+
+PHASE 3K: PRODUCT MODE TEMPLATES
+
+Update setup wizard so each product mode creates default receptionist profiles and transfer targets.
+
+MSP Support Desk:
+- AI Support Intake
+- Emergency escalation target
+- Support queue
+- Billing queue
+- Sales queue
+
+Sales Intake:
+- AI Sales Qualifier
+- Sales rep transfer target
+- Follow-up task automation
+
+Field Service:
+- AI Dispatch Intake
+- Dispatcher target
+- After-hours voicemail/intake
+
+Medical/Office Intake:
+- AI Administrative Receptionist
+- Scheduling queue
+- General questions queue
+- Callback task automation
+Strictly administrative. No medical diagnosis or triage.
+
+General Business:
+- AI Front Desk
+- General voicemail
+- Owner transfer target
+
+---
+
+PHASE 3L: CONSENT + COMPLIANCE UX
+
+Add channel settings:
+- require_recording_consent boolean
+- consent_script
+- consent_required_before_recording boolean
+
+If enabled:
+- TwiML says consent_script before recording/Gather
+- If caller does not continue/respond, send to non-recorded fallback or voicemail depending config
+
+Add README/legal note:
+- Recording and AI-call handling laws vary by jurisdiction.
+- Users are responsible for compliance.
+- Provide configurable consent prompts.
+
+---
+
+PHASE 3M: TESTING + SIMULATION
+
+Enhance simulation tools:
+
+Create /simulate/live-call
+
+Allow user to:
+- choose channel
+- choose receptionist profile
+- input caller messages turn-by-turn
+- run AI decision loop
+- view TwiML-like output
+- see created objects
+- see flow logs
+- see transfer decisions
+
+Add smoke checks:
+- inbound AI receptionist creates live_call_session
+- gather endpoint updates transcript_live
+- missing intake fields produce next question
+- completed intake creates correct object
+- emergency keyword escalates
+- transfer target creates transfer log
+- duplicate gather callbacks do not duplicate objects
+- unauthorized users cannot access live session
+
+---
+
+PHASE 3N: QUALITY GATE
+
+After implementation:
+
+- run database migrations
+- run pnpm run typecheck
+- run available tests
+- manually verify:
+  - normal live intake
+  - transfer flow
+  - voicemail flow
+  - emergency escalation
+  - switchboard display
+  - product mode templates
+  - demo mode without Twilio/AI keys
+
+Update:
+- README.md
+- replit.md
+- .env.example
+
+Acceptance criteria:
+
+- Twilio incoming call can trigger AI receptionist mode
+- Gather endpoint can continue a multi-turn intake conversation
+- Required intake fields are collected
+- Call can be routed/transferred
+- Emergency/escalation rules work
+- Tickets/leads/tasks can be created during the call
+- Switchboard shows live calls and actions
+- Multiple lines can run different receptionist profiles
+- Simulation mode works without real telephony keys
+- No dead buttons
+- Existing Phase 1 and Phase 2 workflows still work
