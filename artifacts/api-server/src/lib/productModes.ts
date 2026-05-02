@@ -84,7 +84,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
     id: "msp",
     label: "MSP Support Desk",
     description:
-      "Ticket-driven inbound for managed-service providers. Default lines for support, emergencies, billing, and sales with auto-ticketing and urgent escalation.",
+      "Ticket-driven inbound for managed-service providers. Seeds lines for support, emergencies, billing, and sales with auto-ticketing and urgent escalation rules.",
     dashboardLabels: {
       primaryArtifact: "Tickets",
       secondaryArtifact: "Escalations",
@@ -93,7 +93,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Support Line",
         greetingText:
-          "Thank you for calling support. Please describe your issue after the tone.",
+          "Thanks for calling support. Our virtual receptionist will take a few details so we can route you to the right engineer.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -105,7 +105,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Emergency Line",
         greetingText:
-          "You have reached the emergency response line. Please clearly state the nature of the outage.",
+          "You've reached the emergency response line. Briefly describe the outage and we'll connect you to the on-call engineer.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -116,7 +116,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Billing Line",
         greetingText:
-          "You have reached billing. Please leave your account number and your question.",
+          "You've reached billing. Please leave your account number and the question you'd like us to look into, and a billing specialist will return your call.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -125,7 +125,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Sales Line",
         greetingText:
-          "Thanks for calling sales. Please leave your name, company, and what you're evaluating.",
+          "Thanks for calling sales. Please leave your name, company, and what you're evaluating, and a rep will follow up shortly.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -148,13 +148,13 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "MSP Support Receptionist",
         greetingScript:
-          "Thank you for calling support. I'm a virtual receptionist and I can help route your call.",
+          "Thanks for calling support. I'm a virtual receptionist and I can take a few quick details so the right engineer gets back to you.",
         fallbackScript:
-          "I'm having trouble hearing you. We'll follow up by email. Goodbye.",
+          "I'm having trouble hearing you clearly. I'll log what I have and someone from the team will follow up shortly. Thanks for calling.",
         escalationScript:
-          "This sounds urgent. I'm connecting you to our on-call engineer right now.",
+          "That sounds urgent — I'm connecting you to our on-call engineer right now. Please stay on the line.",
         voicemailScript:
-          "Please leave your name, company, and a brief description of the issue after the tone.",
+          "Please leave your name, company, and a brief description of the issue, and a support engineer will return your call.",
         tone: "professional",
         intakeSchema: {
           fields: [
@@ -204,7 +204,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
     id: "sales",
     label: "Sales Intake",
     description:
-      "Lead-driven inbound for sales teams. Default lines for new leads vs. existing customers, with auto lead-creation and follow-up tasks.",
+      "Lead-driven inbound for sales teams. Seeds separate lines for new leads vs. existing customers, with auto lead-creation and next-day follow-up tasks.",
     dashboardLabels: {
       primaryArtifact: "Leads",
       secondaryArtifact: "Follow-ups",
@@ -213,7 +213,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "New Leads Line",
         greetingText:
-          "Thanks for reaching out. Please leave your name, company, and what you're looking for.",
+          "Thanks for reaching out. Our virtual receptionist will take a few quick details so the right rep can follow up.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -225,7 +225,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Existing Customers Line",
         greetingText:
-          "Thanks for calling. Please leave your account name and how we can help.",
+          "Thanks for calling. Please leave your account name and how we can help, and your account team will get back to you.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -254,11 +254,13 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Sales Intake Receptionist",
         greetingScript:
-          "Thanks for calling sales. I'm a virtual receptionist and can take a few details so the right rep can follow up.",
+          "Thanks for calling sales. I'm a virtual receptionist and I can take a few quick details so the right rep can follow up.",
         fallbackScript:
-          "Sorry, I missed that. We'll reach out by email. Goodbye.",
+          "Sorry, I didn't catch that. I'll pass along what I have and a rep will reach out shortly. Thanks for calling.",
+        escalationScript:
+          "Let me get a sales rep on the line for you. One moment.",
         voicemailScript:
-          "Please leave your name, company, contact info, and what you're evaluating.",
+          "Please leave your name, company, the best callback number, and what you're evaluating, and a rep will return your call.",
         tone: "friendly",
         intakeSchema: {
           fields: [
@@ -293,7 +295,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
     id: "field_service",
     label: "Field Service",
     description:
-      "Dispatch-driven inbound for field service teams (plumbing, HVAC, electrical, locksmiths). Default dispatch and after-hours lines with job creation and dispatcher notifications. NOTE: never makes automotive diagnostic claims — diagnosis is the technician's job.",
+      "Dispatch-driven inbound for field service teams (plumbing, HVAC, electrical, locksmiths). Seeds dispatch and after-hours lines with job creation and dispatcher notifications. The receptionist takes intake only — diagnosis is the technician's job, on site.",
     dashboardLabels: {
       primaryArtifact: "Jobs",
       secondaryArtifact: "Dispatch",
@@ -302,7 +304,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Dispatch Line",
         greetingText:
-          "Thank you for calling dispatch. Please describe the issue and your service address.",
+          "Thanks for calling dispatch. Our virtual dispatcher will take a few details so we can schedule a technician.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -314,7 +316,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "After Hours Line",
         greetingText:
-          "You've reached our after-hours line. Please describe your urgent request and a callback number.",
+          "You've reached our after-hours line. Our virtual dispatcher will take your urgent request and we'll get back to you as soon as possible.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -341,11 +343,13 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Field Service Dispatcher",
         greetingScript:
-          "Thank you for calling. I'm a virtual dispatcher and can take your details so a technician can be scheduled. I won't diagnose the issue over the phone — our technician will assess on site.",
+          "Thanks for calling. I'm a virtual dispatcher and I can take your details so a technician can be scheduled. I won't diagnose the issue over the phone — our technician will assess that on site.",
         fallbackScript:
-          "Sorry, I missed that. A dispatcher will follow up. Goodbye.",
+          "Sorry, I didn't catch that. I'll pass along what I have and a dispatcher will follow up shortly. Thanks for calling.",
+        escalationScript:
+          "That sounds urgent — I'll flag this for our on-call dispatcher right now and someone will reach you shortly.",
         voicemailScript:
-          "Please leave your name, service address, callback number, and a brief description of the issue.",
+          "Please leave your name, service address, the best callback number, and a brief description of the issue, and a dispatcher will return your call.",
         tone: "professional",
         intakeSchema: {
           fields: [
@@ -387,7 +391,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
     id: "medical",
     label: "Medical / Office Intake",
     description:
-      "Administrative intake for medical and dental offices. Scheduling and general questions only — never makes diagnostic claims, never offers medical advice or triage.",
+      "Administrative intake for medical and dental offices. Scheduling and general questions only — the receptionist never makes diagnostic claims, never offers medical advice, and never performs triage.",
     dashboardLabels: {
       primaryArtifact: "Intake Tasks",
       secondaryArtifact: "Scheduling",
@@ -396,7 +400,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Scheduling Line",
         greetingText:
-          "Thank you for calling. Please leave your name and the appointment you'd like to schedule. Our staff will return your call.",
+          "Thanks for calling. Our virtual receptionist will take a few quick details so our staff can return your call about your appointment.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -406,12 +410,12 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
         receptionistProfileName: "Office Scheduling Receptionist",
         requireRecordingConsent: true,
         consentScript:
-          "This call may be recorded for quality and training purposes. By staying on the line you consent.",
+          "This call may be recorded for quality and training purposes. By staying on the line you consent to being recorded.",
       },
       {
         name: "General Questions Line",
         greetingText:
-          "Thank you for calling. For non-clinical questions, please leave a message and our staff will return your call.",
+          "Thanks for calling. For non-clinical questions, please leave your name, callback number, and a brief message, and our staff will return your call.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -438,11 +442,13 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Office Scheduling Receptionist",
         greetingScript:
-          "Thank you for calling. I'm a virtual receptionist for our office. I can collect your contact information and the reason for your call so our staff can return it. I cannot give medical advice or discuss clinical matters.",
+          "Thanks for calling. I'm a virtual receptionist for our office. I can collect your contact information and the reason for your call so our staff can return it. I cannot give medical advice or discuss clinical matters.",
         fallbackScript:
-          "Sorry, I missed that. Our staff will return your call. Goodbye.",
+          "Sorry, I didn't catch that clearly. I'll log what I have and our staff will return your call shortly. Thanks for calling.",
+        escalationScript:
+          "I'll mark this as time-sensitive and our staff will return your call as soon as possible.",
         voicemailScript:
-          "Please leave your name, callback number, and the reason for your call.",
+          "Please leave your name, the best callback number, and the reason for your call, and our staff will return it.",
         tone: "warm",
         intakeSchema: {
           fields: [
@@ -482,7 +488,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
     id: "general",
     label: "General Business",
     description:
-      "A neutral starter for any inbound call workflow. One default line, optional AI receptionist.",
+      "A neutral starter for any inbound call workflow. Seeds one main line and a general-purpose receptionist profile you can attach later.",
     dashboardLabels: {
       primaryArtifact: "Calls",
       secondaryArtifact: "Tasks",
@@ -491,7 +497,7 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "Main Line",
         greetingText:
-          "Thank you for calling. Please leave your message and we will return your call.",
+          "Thanks for calling. Please leave your name, the best callback number, and a brief message, and we'll return your call.",
         recordingConsentText: STD_CONSENT,
         afterHoursBehavior: "voicemail",
         recordCalls: true,
@@ -505,10 +511,13 @@ export const PRODUCT_MODES: Record<ProductModeId, ProductMode> = {
       {
         name: "General Receptionist",
         greetingScript:
-          "Thank you for calling. I'm a virtual receptionist and can take a message for you.",
-        fallbackScript: "Sorry, I missed that. We'll follow up. Goodbye.",
+          "Thanks for calling. I'm a virtual receptionist and I can take a quick message so the right person gets back to you.",
+        fallbackScript:
+          "Sorry, I didn't catch that. I'll pass along what I have and someone will follow up shortly. Thanks for calling.",
+        escalationScript:
+          "Let me flag this so someone reaches out to you as soon as possible.",
         voicemailScript:
-          "Please leave your name, callback number, and message after the tone.",
+          "Please leave your name, the best callback number, and a brief message, and we'll get back to you.",
         tone: "professional",
         intakeSchema: {
           fields: [

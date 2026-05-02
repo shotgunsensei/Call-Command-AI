@@ -144,34 +144,51 @@ async function transcribeAudio(
 }
 
 async function analyzeTranscript(transcript: string): Promise<CallAnalysis> {
-  const system = `You are CallCommand, an analyst who turns inbound phone-call transcripts into structured intelligence for sales and support operators. Return ONLY valid JSON matching the requested schema. Be specific, decisive, and concise. Never use emojis.`;
-  const user = `Analyze the following call transcript and return JSON with this exact shape:
+  const system = `You are CallCommand, an analyst that turns inbound phone-call transcripts into structured operations data. Your output drives downstream automation (tickets, leads, tasks, follow-ups), so accuracy matters more than completeness.
+
+Hard rules:
+- Return ONLY valid JSON matching the requested schema. No prose, no markdown, no comments.
+- Ground EVERY field in evidence from the transcript. If something is not stated, return null (or an empty array). Do NOT guess names, companies, phone numbers, dates, or amounts.
+- Transcripts come from automatic speech recognition and may contain misheard words, missing punctuation, and speaker-label confusion. Prefer null over a guess.
+- Never include clinical diagnoses, medical advice, legal advice, or financial advice — even if the caller asked for them. Summarize the request administratively.
+- Never include personally identifying information (full SSNs, full credit-card numbers, government IDs) in any field. If the caller shared one, redact to last 4 digits.
+- Be specific, decisive, and concise. No emojis. No hedging language ("it seems", "perhaps") in summary or keyPoints — state what was said.
+- internalNotes is for the rep's eyes only: tactical observations, NOT judgments about the caller's character.`;
+  const user = `Analyze the call transcript between <TRANSCRIPT> markers below and return a single JSON object with this exact shape:
 
 {
-  "summary": string,                       // 2-4 crisp sentences
-  "customerName": string | null,
-  "companyName": string | null,
-  "callerPhone": string | null,
-  "callType": "sales" | "support" | "complaint" | "inquiry" | "follow-up" | "other",
-  "intent": string | null,                 // 1 sentence on what the caller wants
-  "priority": "low" | "medium" | "high" | "urgent",
+  "summary": string,                       // 1-4 sentences. Sparse transcripts get a shorter summary. What happened, what was decided, what's next.
+  "customerName": string | null,           // exact name said on the call, else null
+  "companyName": string | null,            // exact company name said on the call, else null
+  "callerPhone": string | null,            // E.164 if given (e.g. "+14155550142"), else null
+  "callType": ("sales" | "support" | "complaint" | "inquiry" | "follow-up" | "other") | null,  // null when the transcript doesn't make it clear
+  "intent": string | null,                 // 1 sentence: what the caller wants to accomplish
+  "priority": "low" | "medium" | "high" | "urgent",  // urgent = outage, safety, or revenue-blocking
   "sentiment": "positive" | "neutral" | "negative" | "mixed",
-  "keyPoints": string[],                   // 3-6 short bullets
-  "followUpMessage": string | null,        // a short message the rep can send the customer
-  "internalNotes": string | null,          // private rep notes
-  "suggestedTags": string[],               // 3-6 short kebab-case tags
-  "crmJson": object,                       // any structured CRM-friendly payload you want
+  "keyPoints": string[],                   // up to 6 short bullets, each <= 120 chars. Empty array if there's nothing concrete to list.
+  "followUpMessage": string | null,        // 1-3 sentences the rep can send the caller verbatim. No emojis. No placeholders like [name]. Null if a follow-up doesn't make sense.
+  "internalNotes": string | null,          // <= 280 chars. Tactical context for the rep. Not a re-summary. Null if you have nothing useful to add.
+  "suggestedTags": string[],               // up to 6 short kebab-case tags drawn from the transcript content. Empty array if nothing tag-worthy.
+  "crmJson": object,                       // small flat object of structured fields you can confidently extract; keep it under ~12 keys. Empty object {} is fine.
   "actionItems": Array<{
-    "title": string,
-    "description": string | null,
-    "priority": "low" | "medium" | "high"
-  }>                                        // 1-5 items
+    "title": string,                       // imperative, <= 80 chars
+    "description": string | null,          // optional one-liner
+    "priority": "low" | "medium" | "high",
+    "dueDate": string | null               // ISO 8601 date (YYYY-MM-DD) only if the caller specified a deadline; else null
+  }>                                        // up to 5 items. Empty array if no follow-ups are warranted.
 }
 
-Transcript:
-"""
+Reminder: it is correct and expected to return null / empty arrays when the transcript doesn't support a confident value. Do not pad output to hit a count.
+
+Priority guide:
+- urgent: caller reports an active outage, safety risk, or hard deadline today
+- high: business-impacting issue or hot lead with explicit timeline this week
+- medium: normal request with clear next step
+- low: FYI, general question, no follow-up demanded
+
+<TRANSCRIPT>
 ${transcript}
-"""`;
+</TRANSCRIPT>`;
 
   const messages: OpenAIChatMessage[] = [
     { role: "system", content: system },
