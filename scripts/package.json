@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "normalize-call-file-urls": "tsx ./src/normalizeCallFileUrls.ts",
     "test:upload-hardening": "tsx ./src/uploadHardeningSmoke.ts",
+    "gate:phase3-livecall": "tsx ./src/gatePhase3LiveCall.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
