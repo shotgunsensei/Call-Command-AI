@@ -184,7 +184,7 @@ router.post(
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);
-    if (user) {
+    if (user && user.role !== "admin") {
       const plan = getPlanInfo(user.plan);
       const monthStart = new Date();
       monthStart.setUTCDate(1);

@@ -42,6 +42,11 @@ router.get(
       );
 
     const plan = getPlanInfo(user.plan);
+    const role = user.role === "admin" ? "admin" : "user";
+    // Admins have no monthly cap. We surface a sentinel large number so
+    // the UI's progress bars don't divide by anything tiny.
+    const effectiveLimit =
+      role === "admin" ? Number.MAX_SAFE_INTEGER : plan.monthlyLimit;
 
     res.json({
       id: user.id,
@@ -49,8 +54,9 @@ router.get(
       name: user.name,
       avatarUrl: user.avatarUrl,
       plan: plan.id,
+      role,
       callsThisMonth: Number(count) || 0,
-      monthlyLimit: plan.monthlyLimit,
+      monthlyLimit: effectiveLimit,
       demoMode: !HAS_OPENAI,
     });
   },

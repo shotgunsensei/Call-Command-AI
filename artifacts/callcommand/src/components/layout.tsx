@@ -118,7 +118,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <AvatarFallback className="bg-secondary text-secondary-foreground"><UserIcon className="h-4 w-4" /></AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start overflow-hidden">
-                    <span className="text-sm font-medium truncate w-full">{me?.name || "Operator"}</span>
+                    <span className="text-sm font-medium truncate w-full flex items-center gap-1.5">
+                      {me?.name || "Operator"}
+                      {me?.role === "admin" && (
+                        <span
+                          data-testid="badge-admin"
+                          className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[9px] font-semibold uppercase tracking-wider bg-primary/15 text-primary border border-primary/30"
+                        >
+                          Admin
+                        </span>
+                      )}
+                    </span>
                     <span className="text-xs text-muted-foreground truncate w-full">{me?.email}</span>
                   </div>
                 </div>

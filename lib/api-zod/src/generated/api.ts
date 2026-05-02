@@ -23,6 +23,11 @@ export const GetMeResponse = zod.object({
   name: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
   plan: zod.string(),
+  role: zod
+    .enum(["user", "admin"])
+    .describe(
+      'Workspace role. \"admin\" bypasses plan limits and unlocks all\nworkspace-admin features in the UI.\n',
+    ),
   callsThisMonth: zod.number(),
   monthlyLimit: zod.number(),
   demoMode: zod.boolean(),

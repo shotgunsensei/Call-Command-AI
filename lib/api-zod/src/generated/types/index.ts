@@ -73,6 +73,7 @@ export * from "./liveCallSessionSummaryCollectedData";
 export * from "./liveCallSessionSummaryCreatedObjectIds";
 export * from "./liveSessionNote";
 export * from "./me";
+export * from "./meRole";
 export * from "./productMode";
 export * from "./productModeChannelDefault";
 export * from "./productModeList";

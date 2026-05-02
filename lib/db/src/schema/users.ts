@@ -16,6 +16,10 @@ export const usersTable = pgTable(
     name: text("name"),
     avatarUrl: text("avatar_url"),
     plan: text("plan").notNull().default("free"),
+    // Role-based access. "admin" bypasses plan limits and gates the
+    // workspace-admin UI surface. Default "user" for everyone else.
+    // Synced from ADMIN_EMAILS env on every requireAuth pass.
+    role: text("role").notNull().default("user"),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     ingestionTokenHash: text("ingestion_token_hash"),

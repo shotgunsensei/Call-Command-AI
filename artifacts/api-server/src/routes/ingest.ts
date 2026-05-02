@@ -61,6 +61,7 @@ async function checkPlanLimit(userId: string): Promise<string | null> {
     .where(eq(usersTable.id, userId))
     .limit(1);
   if (!user) return "User not found";
+  if (user.role === "admin") return null;
   const plan = getPlanInfo(user.plan);
   const monthStart = new Date();
   monthStart.setUTCDate(1);

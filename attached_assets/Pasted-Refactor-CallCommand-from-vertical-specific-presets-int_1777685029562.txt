@@ -1,0 +1,185 @@
+Refactor CallCommand from vertical-specific presets into a generalized multi-use business intake and automation platform.
+
+Do NOT remove existing functionality.
+Do NOT reduce system capabilities.
+
+---
+
+PHASE 4A: USE CASE TEMPLATE SYSTEM
+
+Replace rigid product modes with flexible templates.
+
+Create table: use_case_templates
+
+- id
+- name
+- description
+- category (support | sales | scheduling | dispatch | general)
+- default_channels JSON
+- default_flows JSON
+- default_receptionist_profiles JSON
+- default_transfer_targets JSON
+- default_automation_rules JSON
+
+---
+
+PHASE 4B: TEMPLATE-DRIVEN SETUP
+
+Update setup wizard:
+
+Step 1:
+User selects:
+- Support & Service
+- Sales & Lead Intake
+- Scheduling & Appointments
+- Dispatch & Field Work
+- Front Desk / General
+
+Step 2:
+System auto-creates:
+- channels
+- flows
+- receptionist profiles
+- rules
+- transfer targets
+
+Step 3:
+User can edit everything afterward.
+
+---
+
+PHASE 4C: TERMINOLOGY NORMALIZATION
+
+Remove vertical-specific naming.
+
+Use generic terms:
+- “Ticket” → “Case”
+- “Lead” stays
+- “Task” stays
+- “Job” optional alias of task
+
+UI must adapt labels based on template.
+
+Example:
+Support template:
+- “Cases”
+
+Sales template:
+- “Leads”
+
+Dispatch template:
+- “Jobs”
+
+---
+
+PHASE 4D: ADAPTIVE DASHBOARD
+
+Dashboard widgets adapt based on template:
+
+Support:
+- Open cases
+- Escalations
+
+Sales:
+- Leads this week
+- Conversion pipeline
+
+Scheduling:
+- Pending callbacks
+- Bookings
+
+Dispatch:
+- Active jobs
+- Assignments
+
+General:
+- Calls processed
+- Messages
+- Follow-ups
+
+---
+
+PHASE 4E: FLOW PRESET LIBRARY
+
+Provide prebuilt flow examples:
+
+- Basic intake → create case
+- Lead capture → assign follow-up
+- After-hours voicemail → create task
+- Emergency escalation → alert + assign
+
+User can clone and modify.
+
+---
+
+PHASE 4F: INTAKE SCHEMA LIBRARY
+
+Provide schema presets:
+
+Support:
+- issue
+- urgency
+- system
+
+Sales:
+- interest
+- budget
+- timeline
+
+Scheduling:
+- date
+- time
+- service type
+
+Dispatch:
+- location
+- service needed
+- urgency
+
+General:
+- message
+- callback info
+
+---
+
+PHASE 4G: BRANDING LAYER
+
+Allow:
+- workspace name
+- logo
+- color theme
+
+UI adjusts but core design stays consistent.
+
+---
+
+PHASE 4H: DEMO GENERATOR (IMPORTANT)
+
+Add:
+- “Generate Demo Data”
+
+Creates:
+- realistic calls
+- different use cases
+- populated switchboard
+- cases/leads/tasks
+
+User sees value immediately.
+
+---
+
+FINAL REQUIREMENTS:
+
+- system works for multiple business types without code changes
+- no hard-coded MSP logic
+- templates create complete working setups
+- users can modify everything
+- demo mode shows value instantly
+- no dead UI elements
+
+After:
+- run typecheck
+- run smoke tests
+- update README with:
+  - use case templates
+  - how to choose the right setup

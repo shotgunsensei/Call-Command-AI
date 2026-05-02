@@ -5,6 +5,7 @@
  * CallCommand AI API
  * OpenAPI spec version: 0.1.0
  */
+import type { MeRole } from "./meRole";
 
 export interface Me {
   id: string;
@@ -14,6 +15,10 @@ export interface Me {
   /** @nullable */
   avatarUrl?: string | null;
   plan: string;
+  /** Workspace role. "admin" bypasses plan limits and unlocks all
+workspace-admin features in the UI.
+ */
+  role: MeRole;
   callsThisMonth: number;
   monthlyLimit: number;
   demoMode: boolean;

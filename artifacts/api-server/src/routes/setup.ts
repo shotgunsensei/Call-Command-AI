@@ -8,11 +8,12 @@ import {
   db,
   channelsTable,
   automationRulesTable,
+  callFlowsTable,
   receptionistProfilesTable,
   transferTargetsTable,
   usersTable,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   getProductMode,
@@ -23,6 +24,11 @@ import {
   type RuleSeed,
   type TransferTargetSeed,
 } from "../lib/productModes";
+import {
+  getTwilioConfig,
+  getWebhookBaseUrl,
+  isTwilioConfigured,
+} from "../lib/twilio";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -36,11 +42,15 @@ router.get(
         id: m.id,
         label: m.label,
         description: m.description,
-        channelCount: m.channels.length,
-        ruleCount: m.rules.length,
-        receptionistProfileCount: m.receptionistProfiles.length,
-        transferTargetCount: m.transferTargets.length,
-        dashboardLabels: m.dashboardLabels,
+        // Spec-conformant `defaultChannels` array for the wizard.
+        defaultChannels: m.channels.map((c) => ({
+          name: c.name,
+          type: "twilio",
+          greetingText: c.greetingText ?? null,
+          recordCalls: c.recordCalls,
+          allowVoicemail: c.allowVoicemail,
+          isDefault: c.isDefault === true,
+        })),
       })),
     );
   },
@@ -56,28 +66,38 @@ router.get(
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);
-    const channels = await db
-      .select()
-      .from(channelsTable)
-      .where(eq(channelsTable.userId, userId));
-    const rules = await db
-      .select()
-      .from(automationRulesTable)
-      .where(eq(automationRulesTable.userId, userId));
-    const profiles = await db
-      .select()
-      .from(receptionistProfilesTable)
-      .where(eq(receptionistProfilesTable.userId, userId));
-    const targets = await db
-      .select()
-      .from(transferTargetsTable)
-      .where(eq(transferTargetsTable.userId, userId));
+
+    const [{ channels = 0, rules = 0, flows = 0 } = {}] = await db
+      .select({
+        channels: sql<number>`(select count(*)::int from ${channelsTable} where ${channelsTable.userId} = ${userId})`,
+        rules: sql<number>`(select count(*)::int from ${automationRulesTable} where ${automationRulesTable.userId} = ${userId})`,
+        flows: sql<number>`(select count(*)::int from ${callFlowsTable} where ${callFlowsTable.userId} = ${userId})`,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    const cfg = getTwilioConfig();
+    const base = getWebhookBaseUrl(cfg);
     res.json({
       productMode: user?.productMode ?? null,
-      channelCount: channels.length,
-      ruleCount: rules.length,
-      receptionistProfileCount: profiles.length,
-      transferTargetCount: targets.length,
+      twilio: {
+        configured: isTwilioConfigured(cfg),
+        hasAccountSid: Boolean(cfg.accountSid),
+        hasAuthToken: Boolean(cfg.authToken),
+        webhookBaseUrl: base,
+        webhooks: {
+          incoming: base ? `${base}/api/twilio/voice/incoming` : "",
+          status: base ? `${base}/api/twilio/voice/status` : "",
+          recording: base ? `${base}/api/twilio/voice/recording` : "",
+          transcription: base
+            ? `${base}/api/twilio/voice/transcription`
+            : "",
+        },
+      },
+      channelCount: Number(channels) || 0,
+      flowCount: Number(flows) || 0,
+      ruleCount: Number(rules) || 0,
     });
   },
 );

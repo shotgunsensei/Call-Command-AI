@@ -25,6 +25,7 @@ timeoutMs = 20000
 VITE_CLERK_PUBLISHABLE_KEY = "pk_test_bmV1dHJhbC1tYXJtb3NldC0xMC5jbGVyay5hY2NvdW50cy5kZXYk"
 
 [userenv.development]
+ADMIN_EMAILS = "johntwms355@gmail.com"
 
 [[ports]]
 localPort = 8080

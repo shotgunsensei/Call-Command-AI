@@ -26,6 +26,7 @@ The project is a pnpm workspace monorepo using Node.js 24 and TypeScript 5.9.
 
 **Authentication:**
 - Clerk (Replit-managed) for user authentication and authorization, including proxy integration and `clerkMiddleware`.
+- **Roles:** `users.role` (`user` | `admin`, default `user`). Admins bypass all monthly call/ingest plan limits and see an "ADMIN" badge in the layout. Role is reconciled on every `requireAuth` pass from the `ADMIN_EMAILS` env var (comma-separated, case-insensitive). Promotion/demotion is therefore env-only — no DB write needed beyond changing the env and signing in.
 
 **AI Integration:**
 - OpenAI via Replit AI Integrations for audio transcription (`gpt-4o-mini-transcribe`) and call analysis (`gpt-5.4` in JSON mode). Includes deterministic demo fallback.

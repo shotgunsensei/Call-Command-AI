@@ -1260,11 +1260,17 @@ components:
         name: { type: ["string", "null"] }
         avatarUrl: { type: ["string", "null"] }
         plan: { type: string }
+        role:
+          type: string
+          enum: [user, admin]
+          description: |
+            Workspace role. "admin" bypasses plan limits and unlocks all
+            workspace-admin features in the UI.
         callsThisMonth: { type: integer }
         monthlyLimit: { type: integer }
         demoMode: { type: boolean }
       required:
-        [id, email, plan, callsThisMonth, monthlyLimit, demoMode]
+        [id, email, plan, role, callsThisMonth, monthlyLimit, demoMode]
 
     RequestUploadUrlBody:
       type: object

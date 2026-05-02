@@ -13,6 +13,18 @@ export interface Error {
   error: string;
 }
 
+/**
+ * Workspace role. "admin" bypasses plan limits and unlocks all
+workspace-admin features in the UI.
+
+ */
+export type MeRole = (typeof MeRole)[keyof typeof MeRole];
+
+export const MeRole = {
+  user: "user",
+  admin: "admin",
+} as const;
+
 export interface Me {
   id: string;
   email: string;
@@ -21,6 +33,10 @@ export interface Me {
   /** @nullable */
   avatarUrl?: string | null;
   plan: string;
+  /** Workspace role. "admin" bypasses plan limits and unlocks all
+workspace-admin features in the UI.
+ */
+  role: MeRole;
   callsThisMonth: number;
   monthlyLimit: number;
   demoMode: boolean;
